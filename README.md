@@ -1,6 +1,6 @@
 # CareCircle
 
-[![CI](https://github.com/sonitanay23/carecircle/actions/workflows/ci.yml/badge.svg)](https://github.com/sonitanay23/carecircle/actions/workflows/ci.yml) ![Tests](https://img.shields.io/badge/tests-147%20passing-brightgreen) ![Coverage](https://img.shields.io/badge/coverage-98.5%25-brightgreen) ![Node](https://img.shields.io/badge/node-22-blue) ![License](https://img.shields.io/badge/license-MIT-blue)
+[![CI](https://github.com/sonitanay23/carecircle/actions/workflows/ci.yml/badge.svg)](https://github.com/sonitanay23/carecircle/actions/workflows/ci.yml) ![Tests](https://img.shields.io/badge/tests-148%20passing-brightgreen) ![Coverage](https://img.shields.io/badge/coverage-98.5%25-brightgreen) ![Node](https://img.shields.io/badge/node-22-blue) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 **Live:** https://carecircle-dqjzfm3zpq-el.a.run.app
 
@@ -82,7 +82,7 @@ GitHub Actions runs lint, all unit/API tests with coverage, a production depende
 
 | Suite                | What it covers                                                                                                                                                                                                                                                 |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 147 unit + API tests | Schedules and time zones, dose logging, adherence, elder approval flow, reminders (upcoming, missed, escalation, idempotency, retries), email content, permissions, passcode lockout, token revocation, input validation, QR encoder, AI parsing and fallbacks |
+| 148 unit + API tests | Schedules and time zones, dose logging, adherence, elder approval flow, reminders (upcoming, missed, escalation, idempotency, retries), email content, permissions, passcode lockout, token revocation, input validation, QR encoder, AI parsing and fallbacks |
 | 5 Playwright tests   | Elder and family journeys at phone size, text-size and contrast modes, keyboard focus, labelled controls                                                                                                                                                       |
 
 Coverage (`node --experimental-test-coverage`): **98.5% lines, 90% branches, 95% functions**.

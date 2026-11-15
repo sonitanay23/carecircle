@@ -25,6 +25,12 @@ test('GET /healthz returns ok', async () => {
   assert.equal(res.headers.get('cache-control'), 'no-store');
 });
 
+test('GET /health works too (Cloud Run reserves /healthz)', async () => {
+  const res = await fetch(`${base}/health`);
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).status, 'ok');
+});
+
 test('sets security headers and hides the framework', async () => {
   const res = await fetch(`${base}/healthz`);
   assert.ok(res.headers.get('content-security-policy'));

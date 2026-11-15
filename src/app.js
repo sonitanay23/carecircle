@@ -51,7 +51,8 @@ export function createApp({ config, logger, services }) {
   app.use(compression());
   app.use(express.json({ limit: '100kb' }));
 
-  app.use('/healthz', healthRouter(config));
+  // Cloud Run's front end reserves paths ending in 'z', so /health is the public check.
+  app.use(['/health', '/healthz'], healthRouter(config));
 
   // Rate-limit the API to slow down passcode guessing and abuse.
   app.use(

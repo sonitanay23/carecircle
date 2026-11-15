@@ -100,7 +100,7 @@ else
 fi
 
 step "Checking the live app"
-curl -fsS "$URL/healthz" && echo
+curl -fsS "$URL/health" && echo
 curl -fsS -o /dev/null -w "Home page: %{http_code}\n" "$URL/"
 curl -fsS -X POST -H "X-Cron-Secret: $CRON_SECRET" "$URL/internal/reminders/run" && echo
 
