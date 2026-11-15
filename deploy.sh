@@ -91,11 +91,12 @@ gcloud run services update "$SERVICE" --region "$REGION" --update-env-vars "APP_
 
 step "Scheduling reminders every 5 minutes (Cloud Scheduler)"
 JOB_ARGS=(--location="$REGION" --schedule="*/5 * * * *" --uri="$URL/internal/reminders/run" --http-method=POST
-  --headers="X-Cron-Secret=$CRON_SECRET" --attempt-deadline=120s --time-zone="Asia/Kolkata")
+  --attempt-deadline=120s --time-zone="Asia/Kolkata")
+# 'create' takes --headers; 'update' needs --update-headers.
 if gcloud scheduler jobs describe carecircle-reminders --location="$REGION" >/dev/null 2>&1; then
-  gcloud scheduler jobs update http carecircle-reminders "${JOB_ARGS[@]}" >/dev/null
+  gcloud scheduler jobs update http carecircle-reminders "${JOB_ARGS[@]}" --update-headers="X-Cron-Secret=$CRON_SECRET" >/dev/null
 else
-  gcloud scheduler jobs create http carecircle-reminders "${JOB_ARGS[@]}" >/dev/null
+  gcloud scheduler jobs create http carecircle-reminders "${JOB_ARGS[@]}" --headers="X-Cron-Secret=$CRON_SECRET" >/dev/null
 fi
 
 step "Checking the live app"
