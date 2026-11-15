@@ -5,8 +5,16 @@ import { buildTestServices, seedFamily } from './helpers.js';
 test('blood pressure readings are stored and flagged for the doctor when high', async () => {
   const { services } = buildTestServices();
   const { pid, elder } = await seedFamily(services);
-  const normal = await services.readings.add(pid, elder, { type: 'bp', systolic: 122, diastolic: 80 });
-  const high = await services.readings.add(pid, elder, { type: 'bp', systolic: 152, diastolic: 94 });
+  const normal = await services.readings.add(pid, elder, {
+    type: 'bp',
+    systolic: 122,
+    diastolic: 80,
+  });
+  const high = await services.readings.add(pid, elder, {
+    type: 'bp',
+    systolic: 152,
+    diastolic: 94,
+  });
   assert.equal(normal.display, '122/80 mmHg');
   assert.equal(normal.flag, null);
   assert.equal(high.flag, 'discuss_with_doctor');
@@ -21,17 +29,41 @@ test('sugar readings need context; fasting and after-meal use different ranges',
   const { services } = buildTestServices();
   const { pid, elder } = await seedFamily(services);
   await assert.rejects(services.readings.add(pid, elder, { type: 'sugar', value: 110 }), /fasting/);
-  assert.equal((await services.readings.add(pid, elder, { type: 'sugar', value: 140, context: 'fasting' })).flag, 'discuss_with_doctor');
-  assert.equal((await services.readings.add(pid, elder, { type: 'sugar', value: 140, context: 'after_meal' })).flag, null);
+  assert.equal(
+    (await services.readings.add(pid, elder, { type: 'sugar', value: 140, context: 'fasting' }))
+      .flag,
+    'discuss_with_doctor',
+  );
+  assert.equal(
+    (await services.readings.add(pid, elder, { type: 'sugar', value: 140, context: 'after_meal' }))
+      .flag,
+    null,
+  );
 });
 
 test('typing mistakes and impossible values are caught', async () => {
   const { services } = buildTestServices();
   const { pid, elder } = await seedFamily(services);
-  await assert.rejects(services.readings.add(pid, elder, { type: 'bp', systolic: 1200, diastolic: 80 }), (e) => e.status === 400);
-  await assert.rejects(services.readings.add(pid, elder, { type: 'bp', systolic: 80, diastolic: 120 }), /lower number/);
-  await assert.rejects(services.readings.add(pid, elder, { type: 'spo2', value: 101 }), (e) => e.status === 400);
-  await assert.rejects(services.readings.add(pid, elder, { type: 'pulse', value: 70, takenAt: '2030-01-01T00:00:00.000Z' }), /future/);
+  await assert.rejects(
+    services.readings.add(pid, elder, { type: 'bp', systolic: 1200, diastolic: 80 }),
+    (e) => e.status === 400,
+  );
+  await assert.rejects(
+    services.readings.add(pid, elder, { type: 'bp', systolic: 80, diastolic: 120 }),
+    /lower number/,
+  );
+  await assert.rejects(
+    services.readings.add(pid, elder, { type: 'spo2', value: 101 }),
+    (e) => e.status === 400,
+  );
+  await assert.rejects(
+    services.readings.add(pid, elder, {
+      type: 'pulse',
+      value: 70,
+      takenAt: '2030-01-01T00:00:00.000Z',
+    }),
+    /future/,
+  );
 });
 
 test('only the person who logged a reading, or the elder, can delete it', async () => {

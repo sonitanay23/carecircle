@@ -35,7 +35,10 @@ test('loadConfig rejects invalid values', () => {
 
 test('production refuses to start without a strong session secret', () => {
   assert.throws(() => loadConfig({ NODE_ENV: 'production' }), /SESSION_SECRET/);
-  assert.throws(() => loadConfig({ NODE_ENV: 'production', SESSION_SECRET: 'short' }), /SESSION_SECRET/);
+  assert.throws(
+    () => loadConfig({ NODE_ENV: 'production', SESSION_SECRET: 'short' }),
+    /SESSION_SECRET/,
+  );
   assert.throws(() => loadConfig({ STORE: 'redis' }), /Invalid STORE/);
 });
 

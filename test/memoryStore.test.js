@@ -23,9 +23,20 @@ test('returned documents are copies', async () => {
 
 test('list supports where, orderBy and limit', async () => {
   const c = createMemoryStore().collection('things');
-  for (const [id, n, s] of [['a', 3, 'x'], ['b', 1, 'y'], ['c', 2, 'x']]) await c.create(id, { n, s });
-  const xs = await c.list({ where: [['s', '==', 'x']], orderBy: { field: 'n', direction: 'desc' } });
-  assert.deepEqual(xs.map((d) => d.id), ['a', 'c']);
+  for (const [id, n, s] of [
+    ['a', 3, 'x'],
+    ['b', 1, 'y'],
+    ['c', 2, 'x'],
+  ])
+    await c.create(id, { n, s });
+  const xs = await c.list({
+    where: [['s', '==', 'x']],
+    orderBy: { field: 'n', direction: 'desc' },
+  });
+  assert.deepEqual(
+    xs.map((d) => d.id),
+    ['a', 'c'],
+  );
   assert.equal((await c.list({ orderBy: { field: 'n' }, limit: 1 }))[0].id, 'b');
   assert.deepEqual((await c.list({ where: [['n', '<', 3]] })).map((d) => d.id).sort(), ['b', 'c']);
 });

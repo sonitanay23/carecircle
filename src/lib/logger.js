@@ -10,7 +10,10 @@ const SEVERITY = { debug: 'DEBUG', info: 'INFO', warn: 'WARNING', error: 'ERROR'
 /**
  * @param {{ level?: keyof ORDER, sink?: (line: string) => void }} [opts]
  */
-export function createLogger({ level = 'info', sink = (line) => process.stdout.write(`${line}\n`) } = {}) {
+export function createLogger({
+  level = 'info',
+  sink = (line) => process.stdout.write(`${line}\n`),
+} = {}) {
   const threshold = ORDER[level] ?? ORDER.info;
 
   const log = (lvl, message, fields = {}) => {

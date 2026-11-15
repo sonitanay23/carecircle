@@ -6,15 +6,32 @@ import { S } from '../ai/gemini.js';
 import { MEDICATION_FORMS } from './medications.js';
 
 export const LANGUAGE_NAMES = Object.freeze({
-  en: 'English', hi: 'Hindi', ta: 'Tamil', te: 'Telugu', bn: 'Bengali', mr: 'Marathi',
-  gu: 'Gujarati', kn: 'Kannada', ml: 'Malayalam', pa: 'Punjabi', ur: 'Urdu',
+  en: 'English',
+  hi: 'Hindi',
+  ta: 'Tamil',
+  te: 'Telugu',
+  bn: 'Bengali',
+  mr: 'Marathi',
+  gu: 'Gujarati',
+  kn: 'Kannada',
+  ml: 'Malayalam',
+  pa: 'Punjabi',
+  ur: 'Urdu',
 });
 
-export const DISCLAIMER = 'This is general information, not medical advice. Always check with your doctor or pharmacist.';
+export const DISCLAIMER =
+  'This is general information, not medical advice. Always check with your doctor or pharmacist.';
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const clip = (s, n) => (typeof s === 'string' ? s.trim().slice(0, n) : '');
-const list = (a, n, len = 200) => (Array.isArray(a) ? a.map((x) => clip(x, len)).filter(Boolean).slice(0, n) : []);
-const langLine = (lang) => `Answer in ${LANGUAGE_NAMES[lang] ?? 'English'}. Keep medicine names as written.`;
+const list = (a, n, len = 200) =>
+  Array.isArray(a)
+    ? a
+        .map((x) => clip(x, len))
+        .filter(Boolean)
+        .slice(0, n)
+    : [];
+const langLine = (lang) =>
+  `Answer in ${LANGUAGE_NAMES[lang] ?? 'English'}. Keep medicine names as written.`;
 const medLabel = (m) => `${m.name}${m.dose ? ` ${m.dose}` : ''}`;
 
 const disabled = () =>
@@ -27,7 +44,16 @@ const disabled = () =>
  *  - validates Gemini's answer before using it,
  *  - caches answers that do not change, to save time and cost.
  */
-export function createAssistantService({ store, gemini, profiles, medications, doses, appointments, readings, now }) {
+export function createAssistantService({
+  store,
+  gemini,
+  profiles,
+  medications,
+  doses,
+  appointments,
+  readings,
+  now,
+}) {
   const cache = (pid) => store.collection(paths.aiCache(pid));
   const client = () => {
     if (!gemini) throw disabled();
@@ -40,7 +66,11 @@ export function createAssistantService({ store, gemini, profiles, medications, d
     const hit = await cache(pid).get(id);
     if (hit) return { ...hit.value, cached: true };
     const value = await compute();
-    await cache(pid).set(id, { key: key.slice(0, 200), value, createdAt: new Date(now()).toISOString() });
+    await cache(pid).set(id, {
+      key: key.slice(0, 200),
+      value,
+      createdAt: new Date(now()).toISOString(),
+    });
     return { ...value, cached: false };
   }
 
@@ -67,7 +97,7 @@ export function createAssistantService({ store, gemini, profiles, medications, d
           'SOS or PRN means "when needed": set asNeeded true and leave times empty.',
           'If the duration is written (e.g. "x 5 days", "for 1 month", "1/12" = 1 month, "2/52" = 2 weeks), give durationDays.',
           'Set confidence to "high" only when the name and timing are clearly readable; otherwise "low". Never guess a dose you cannot read; leave it empty and add a warning.',
-          'Ignore the doctor\'s name, clinic, patient details, signatures and stamps.',
+          "Ignore the doctor's name, clinic, patient details, signatures and stamps.",
           'If the image is not a prescription or medicine at all, set readable to false.',
         ].join(' '),
         parts: [{ inlineData: { mimeType: contentType, data: buffer.toString('base64') } }],
@@ -103,14 +133,19 @@ export function createAssistantService({ store, gemini, profiles, medications, d
           if (!name) return null;
           const times = [...new Set(list(m.times, 8, 5).filter((t) => TIME.test(t)))].sort();
           const asNeeded = Boolean(m.asNeeded) || times.length === 0;
-          const days = Number.isFinite(m.durationDays) && m.durationDays > 0 && m.durationDays <= 365 ? Math.round(m.durationDays) : null;
+          const days =
+            Number.isFinite(m.durationDays) && m.durationDays > 0 && m.durationDays <= 365
+              ? Math.round(m.durationDays)
+              : null;
           return {
             name,
             dose: clip(m.dose, 40) || undefined,
             form: MEDICATION_FORMS.includes(m.form) ? m.form : 'other',
             instructions: clip(m.instructions, 200) || undefined,
             asNeeded,
-            schedule: asNeeded ? null : { times, startDate: today, endDate: days ? addDays(today, days - 1) : null },
+            schedule: asNeeded
+              ? null
+              : { times, startDate: today, endDate: days ? addDays(today, days - 1) : null },
             // Anything Gemini was not sure about is clearly marked for checking.
             needsCheck: m.confidence !== 'high' || (!asNeeded && times.length === 0),
           };
@@ -131,27 +166,36 @@ export function createAssistantService({ store, gemini, profiles, medications, d
       const g = client();
       const med = await medications.getRaw(pid, medicationId);
       if (!med) throw new HttpError(404, 'Medicine not found', 'NOT_FOUND');
-      return cached(pid, `explain|${lang}|${med.name}|${med.dose ?? ''}|${med.instructions ?? ''}`, async () => {
-        const r = await g.generateJson({
-          instruction: `Explain this medicine to an older person in plain words. ${langLine(lang)} If you do not recognise it, say so in "summary" and leave the lists empty.`,
-          text: JSON.stringify({ medicine: med.name, strength: med.dose ?? null, form: med.form ?? null, instructionsOnLabel: med.instructions ?? null }),
-          schema: S.obj({
-            summary: S.str('what it is usually used for, 1-2 sentences'),
-            howToTake: S.str('general tips such as with food, at the same time each day'),
-            commonSideEffects: S.arr(S.str()),
-            askDoctorIf: S.arr(S.str('signs to call the doctor about')),
-          }),
-        });
-        return {
-          medicine: medLabel(med),
-          language: lang,
-          summary: clip(r.summary, 600),
-          howToTake: clip(r.howToTake, 600),
-          commonSideEffects: list(r.commonSideEffects, 6),
-          askDoctorIf: list(r.askDoctorIf, 6),
-          disclaimer: DISCLAIMER,
-        };
-      });
+      return cached(
+        pid,
+        `explain|${lang}|${med.name}|${med.dose ?? ''}|${med.instructions ?? ''}`,
+        async () => {
+          const r = await g.generateJson({
+            instruction: `Explain this medicine to an older person in plain words. ${langLine(lang)} If you do not recognise it, say so in "summary" and leave the lists empty.`,
+            text: JSON.stringify({
+              medicine: med.name,
+              strength: med.dose ?? null,
+              form: med.form ?? null,
+              instructionsOnLabel: med.instructions ?? null,
+            }),
+            schema: S.obj({
+              summary: S.str('what it is usually used for, 1-2 sentences'),
+              howToTake: S.str('general tips such as with food, at the same time each day'),
+              commonSideEffects: S.arr(S.str()),
+              askDoctorIf: S.arr(S.str('signs to call the doctor about')),
+            }),
+          });
+          return {
+            medicine: medLabel(med),
+            language: lang,
+            summary: clip(r.summary, 600),
+            howToTake: clip(r.howToTake, 600),
+            commonSideEffects: list(r.commonSideEffects, 6),
+            askDoctorIf: list(r.askDoctorIf, 6),
+            disclaimer: DISCLAIMER,
+          };
+        },
+      );
     },
 
     /** Flags possible clashes between current medicines, as "ask your doctor". */
@@ -160,7 +204,13 @@ export function createAssistantService({ store, gemini, profiles, medications, d
       const active = await medications.active(pid);
       const names = active.map(medLabel).sort();
       if (names.length < 2) {
-        return { checked: names, concerns: [], summary: 'There need to be at least two medicines to check.', disclaimer: DISCLAIMER, cached: false };
+        return {
+          checked: names,
+          concerns: [],
+          summary: 'There need to be at least two medicines to check.',
+          disclaimer: DISCLAIMER,
+          cached: false,
+        };
       }
       return cached(pid, `interactions|${lang}|${names.join('|')}`, async () => {
         const r = await g.generateJson({
@@ -172,7 +222,13 @@ export function createAssistantService({ store, gemini, profiles, medications, d
           ].join(' '),
           text: JSON.stringify({ medicines: names }),
           schema: S.obj({
-            concerns: S.arr(S.obj({ medicines: S.arr(S.str()), explanation: S.str(), urgency: S.enum(['ask_soon', 'mention_at_next_visit']) })),
+            concerns: S.arr(
+              S.obj({
+                medicines: S.arr(S.str()),
+                explanation: S.str(),
+                urgency: S.enum(['ask_soon', 'mention_at_next_visit']),
+              }),
+            ),
             summary: S.str(),
           }),
         });
@@ -206,44 +262,68 @@ export function createAssistantService({ store, gemini, profiles, medications, d
         medications.active(pid),
       ]);
       const facts = {
-        appointment: { title: appt.title, doctor: appt.doctor ?? null, specialty: appt.specialty ?? null, date: appt.date },
-        medicines: active.map((m) => ({ name: medLabel(m), times: m.asNeeded ? 'when needed' : m.schedule.times, instructions: m.instructions ?? null })),
+        appointment: {
+          title: appt.title,
+          doctor: appt.doctor ?? null,
+          specialty: appt.specialty ?? null,
+          date: appt.date,
+        },
+        medicines: active.map((m) => ({
+          name: medLabel(m),
+          times: m.asNeeded ? 'when needed' : m.schedule.times,
+          instructions: m.instructions ?? null,
+        })),
         last30Days: {
           adherencePercent: adherence.totals.adherencePercent,
           taken: adherence.totals.taken,
           expected: adherence.totals.expected,
           missed: adherence.totals.missed,
           skipped: adherence.totals.skipped,
-          perMedicine: adherence.medications.map((m) => ({ name: m.name, taken: m.taken, expected: m.expected, late: m.late })),
+          perMedicine: adherence.medications.map((m) => ({
+            name: m.name,
+            taken: m.taken,
+            expected: m.expected,
+            late: m.late,
+          })),
         },
-        readings: readingData.summary.map((s) => ({ type: s.label, count: s.count, average: s.average, latest: s.latest.display, outsideTypicalRange: s.flagged })),
+        readings: readingData.summary.map((s) => ({
+          type: s.label,
+          count: s.count,
+          average: s.average,
+          latest: s.latest.display,
+          outsideTypicalRange: s.flagged,
+        })),
       };
-      return cached(pid, `visit|${lang}|${appointmentId}|${localDate(now(), 'UTC')}|${sha256(JSON.stringify(facts))}`, async () => {
-        const r = await g.generateJson({
-          instruction: [
-            'Write a short summary for an older person to bring to this doctor appointment, using ONLY the facts given.',
-            'Do not interpret readings or suggest treatment. Point out patterns (e.g. evening doses often missed) and suggest 3-5 questions to ask the doctor.',
-            langLine(lang),
-          ].join(' '),
-          text: JSON.stringify(facts),
-          schema: S.obj({
-            overview: S.str(),
-            medicines: S.str('how regularly medicines were taken, any patterns'),
-            readings: S.str('what was measured, without interpreting'),
-            questionsForDoctor: S.arr(S.str()),
-          }),
-        });
-        return {
-          appointment: { id: appt.id, title: appt.title, date: appt.date, time: appt.time },
-          language: lang,
-          overview: clip(r.overview, 600),
-          medicines: clip(r.medicines, 800),
-          readings: clip(r.readings, 800),
-          questionsForDoctor: list(r.questionsForDoctor, 6, 200),
-          facts,
-          disclaimer: DISCLAIMER,
-        };
-      });
+      return cached(
+        pid,
+        `visit|${lang}|${appointmentId}|${localDate(now(), 'UTC')}|${sha256(JSON.stringify(facts))}`,
+        async () => {
+          const r = await g.generateJson({
+            instruction: [
+              'Write a short summary for an older person to bring to this doctor appointment, using ONLY the facts given.',
+              'Do not interpret readings or suggest treatment. Point out patterns (e.g. evening doses often missed) and suggest 3-5 questions to ask the doctor.',
+              langLine(lang),
+            ].join(' '),
+            text: JSON.stringify(facts),
+            schema: S.obj({
+              overview: S.str(),
+              medicines: S.str('how regularly medicines were taken, any patterns'),
+              readings: S.str('what was measured, without interpreting'),
+              questionsForDoctor: S.arr(S.str()),
+            }),
+          });
+          return {
+            appointment: { id: appt.id, title: appt.title, date: appt.date, time: appt.time },
+            language: lang,
+            overview: clip(r.overview, 600),
+            medicines: clip(r.medicines, 800),
+            readings: clip(r.readings, 800),
+            questionsForDoctor: list(r.questionsForDoctor, 6, 200),
+            facts,
+            disclaimer: DISCLAIMER,
+          };
+        },
+      );
     },
 
     /**
@@ -262,11 +342,30 @@ export function createAssistantService({ store, gemini, profiles, medications, d
       const facts = {
         askedBy: member.role,
         today: today.date,
-        dosesToday: today.doses.map((d) => ({ medicine: `${d.name}${d.dose ? ` ${d.dose}` : ''}`, time: d.time, status: d.status, purpose: active.find((m) => m.id === d.medicationId)?.purpose ?? null })),
+        dosesToday: today.doses.map((d) => ({
+          medicine: `${d.name}${d.dose ? ` ${d.dose}` : ''}`,
+          time: d.time,
+          status: d.status,
+          purpose: active.find((m) => m.id === d.medicationId)?.purpose ?? null,
+        })),
         whenNeededTakenToday: today.asNeededTaken.map((r) => r.medicationName),
-        last7Days: { adherencePercent: adherence.totals.adherencePercent, missed: adherence.totals.missed, streakDays: adherence.streakDays },
-        nextAppointments: upcoming.slice(0, 3).map((a) => ({ title: a.title, date: a.date, time: a.time, doctor: a.doctor ?? null, place: a.location?.name ?? null })),
-        latestReadings: readingData.summary.map((s) => ({ type: s.label, latest: s.latest.display, takenAt: s.latest.takenAt })),
+        last7Days: {
+          adherencePercent: adherence.totals.adherencePercent,
+          missed: adherence.totals.missed,
+          streakDays: adherence.streakDays,
+        },
+        nextAppointments: upcoming.slice(0, 3).map((a) => ({
+          title: a.title,
+          date: a.date,
+          time: a.time,
+          doctor: a.doctor ?? null,
+          place: a.location?.name ?? null,
+        })),
+        latestReadings: readingData.summary.map((s) => ({
+          type: s.label,
+          latest: s.latest.display,
+          takenAt: s.latest.takenAt,
+        })),
       };
       const r = await g.generateJson({
         instruction: [
@@ -278,7 +377,13 @@ export function createAssistantService({ store, gemini, profiles, medications, d
         text: JSON.stringify({ facts, question }),
         schema: S.obj({ answer: S.str(), needsDoctor: S.bool() }),
       });
-      return { answer: clip(r.answer, 500) || 'Sorry, I could not answer that. Please ask your family or doctor.', needsDoctor: Boolean(r.needsDoctor), language: lang };
+      return {
+        answer:
+          clip(r.answer, 500) ||
+          'Sorry, I could not answer that. Please ask your family or doctor.',
+        needsDoctor: Boolean(r.needsDoctor),
+        language: lang,
+      };
     },
   };
   return api;

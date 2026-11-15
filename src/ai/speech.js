@@ -5,8 +5,17 @@ const API = 'https://texttospeech.googleapis.com/v1/text:synthesize';
 
 /** Indian English and Indian-language voices, matching the app's languages. */
 export const VOICE_LOCALES = Object.freeze({
-  en: 'en-IN', hi: 'hi-IN', ta: 'ta-IN', te: 'te-IN', bn: 'bn-IN', mr: 'mr-IN',
-  gu: 'gu-IN', kn: 'kn-IN', ml: 'ml-IN', pa: 'pa-IN', ur: 'ur-IN',
+  en: 'en-IN',
+  hi: 'hi-IN',
+  ta: 'ta-IN',
+  te: 'te-IN',
+  bn: 'bn-IN',
+  mr: 'mr-IN',
+  gu: 'gu-IN',
+  kn: 'kn-IN',
+  ml: 'ml-IN',
+  pa: 'pa-IN',
+  ur: 'ur-IN',
 });
 
 /** Google Cloud Text-to-Speech: reads text aloud, slightly slower than normal. */

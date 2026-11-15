@@ -16,7 +16,8 @@ const signIn = async (passcode, profileCode = ctx.fam.pid) => {
   return { authorization: `Bearer ${res.token}`, 'content-type': 'application/json' };
 };
 
-const sos = (headers, body = {}) => fetch(`${root}/api/sos`, { method: 'POST', headers, body: JSON.stringify(body) });
+const sos = (headers, body = {}) =>
+  fetch(`${root}/api/sos`, { method: 'POST', headers, body: JSON.stringify(body) });
 
 before(async () => {
   ctx = buildTestServices();
@@ -33,7 +34,10 @@ after(() => new Promise((resolve) => server.close(resolve)));
 
 test('SOS emails the rest of the circle, with location', async () => {
   const elder = await signIn('mango-tree-42');
-  const res = await sos(elder, { location: { latitude: 12.9715987, longitude: 77.5945627, accuracyMeters: 18.4 }, note: 'I fell in the kitchen' });
+  const res = await sos(elder, {
+    location: { latitude: 12.9715987, longitude: 77.5945627, accuracyMeters: 18.4 },
+    note: 'I fell in the kitchen',
+  });
   assert.equal(res.status, 201);
   assert.deepEqual(await res.json(), { status: 'sent', sent: 1, failed: 0 });
 
@@ -46,7 +50,10 @@ test('SOS emails the rest of the circle, with location', async () => {
 
   assert.match(mail.text, /SOS from Kamala/);
   assert.match(mail.html, /Call Kamala/);
-  assert.ok(!ctx.email.outbox.some((m) => m.subject.startsWith('SOS') && m.to === 'kamala@example.com'), 'not sent back to the sender');
+  assert.ok(
+    !ctx.email.outbox.some((m) => m.subject.startsWith('SOS') && m.to === 'kamala@example.com'),
+    'not sent back to the sender',
+  );
 
   const activity = await ctx.services.activity.list(ctx.fam.pid);
   assert.ok(activity.some((a) => a.action === 'sos.sent' && /with their location/.test(a.summary)));
@@ -65,7 +72,9 @@ test('family can raise an SOS for the elder', async () => {
   const riya = await signIn('riya-secret-7');
   const res = await sos(riya);
   assert.equal(res.status, 201);
-  const mail = ctx.email.outbox.find((m) => m.to === 'kamala@example.com' && m.subject.startsWith('SOS'));
+  const mail = ctx.email.outbox.find(
+    (m) => m.to === 'kamala@example.com' && m.subject.startsWith('SOS'),
+  );
   assert.match(mail.text, /SOS from Riya \(for Kamala\)/);
   assert.match(mail.text, /No location was shared/);
 });
@@ -82,7 +91,9 @@ test('SOS needs a signed-in member', async () => {
 });
 
 test('with no one else in the circle, SOS says to call emergency services', async () => {
-  const { profile } = await ctx.services.profiles.createProfile(elderInput({ elderName: 'Solo Elder', passcode: 'lonely-river-91' }));
+  const { profile } = await ctx.services.profiles.createProfile(
+    elderInput({ elderName: 'Solo Elder', passcode: 'lonely-river-91' }),
+  );
   const res = await sos(await signIn('lonely-river-91', profile.id));
   assert.equal(res.status, 409);
   assert.match((await res.json()).error.message, /call your local emergency number/);

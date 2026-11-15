@@ -80,7 +80,10 @@ const schemas = {
     bloodGroup: oneOf(BLOOD_GROUPS),
     allergies: array(string({ max: 80 }), { max: 30 }),
     conditions: array(string({ max: 80 }), { max: 30 }),
-    emergencyContacts: array(object({ name: nameField, relation: string({ max: 40 }), phone: phone() }), { max: 5 }),
+    emergencyContacts: array(
+      object({ name: nameField, relation: string({ max: 40 }), phone: phone() }),
+      { max: 5 },
+    ),
     notes: optional(string({ max: 500 })),
   },
 };
@@ -93,7 +96,9 @@ const session = (services, profile, member) => ({
 
 /** Changes that need approval return 202 Accepted; applied changes return 200. */
 const sendChangeResult = (res, outcome, body) =>
-  res.status(outcome.status === 'pending' ? 202 : 200).json({ status: outcome.status, change: outcome.change, ...body });
+  res
+    .status(outcome.status === 'pending' ? 202 : 200)
+    .json({ status: outcome.status, change: outcome.change, ...body });
 
 export function apiRouter({ services, config }) {
   const { profiles, changes, activity, medicalId } = services;
@@ -111,7 +116,13 @@ export function apiRouter({ services, config }) {
         id: `welcome-${member.id}`,
         kind: 'welcome',
         recipients: [member],
-        build: (recipient) => messages.welcome({ recipient, elderName: profile.elderName, code, appUrl: config.appBaseUrl }),
+        build: (recipient) =>
+          messages.welcome({
+            recipient,
+            elderName: profile.elderName,
+            code,
+            appUrl: config.appBaseUrl,
+          }),
       })
       .catch(() => {});
   };
@@ -122,7 +133,9 @@ export function apiRouter({ services, config }) {
     limit: config.isProduction ? 20 : 1000,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    message: { error: { code: 'RATE_LIMITED', message: 'Too many attempts. Please wait a few minutes.' } },
+    message: {
+      error: { code: 'RATE_LIMITED', message: 'Too many attempts. Please wait a few minutes.' },
+    },
   });
 
   // ---------- Public endpoints (no passcode) ----------
@@ -159,7 +172,10 @@ export function apiRouter({ services, config }) {
 
   router.get('/me', async (req, res) => {
     const profile = await profiles.getProfile(req.auth.profileId);
-    res.json({ profile: { ...publicProfile(profile), code: formatProfileCode(profile.id) }, me: publicMember(req.auth.member) });
+    res.json({
+      profile: { ...publicProfile(profile), code: formatProfileCode(profile.id) },
+      me: publicMember(req.auth.member),
+    });
   });
 
   router.patch('/me', async (req, res) => {
@@ -188,7 +204,11 @@ export function apiRouter({ services, config }) {
 
   router.post('/members/invites', requirePermission('members:manage'), async (req, res) => {
     const input = parse(req.body, schemas.invite);
-    const { member, inviteCode, expiresAt } = await profiles.invite(req.auth.profileId, req.auth.member, input);
+    const { member, inviteCode, expiresAt } = await profiles.invite(
+      req.auth.profileId,
+      req.auth.member,
+      input,
+    );
     res.status(201).json({
       member: publicMember(member),
       inviteCode: `${inviteCode.slice(0, 5)}-${inviteCode.slice(5)}`,
@@ -206,25 +226,53 @@ export function apiRouter({ services, config }) {
   // Change approvals
   router.get('/changes', requirePermission('changes:read'), async (req, res) => {
     const status = req.query.status;
-    if (status !== undefined && !['pending', 'approved', 'rejected', 'applied', 'withdrawn', 'failed'].includes(status)) {
+    if (
+      status !== undefined &&
+      !['pending', 'approved', 'rejected', 'applied', 'withdrawn', 'failed'].includes(status)
+    ) {
       throw new HttpError(400, 'Unknown status filter', 'VALIDATION');
     }
     res.json({ changes: await changes.list(req.auth.profileId, { status }) });
   });
 
-  router.post('/changes/:changeId/approve', requirePermission('changes:review'), async (req, res) => {
-    const { change } = await changes.approve(req.auth.profileId, req.auth.member, req.params.changeId);
-    res.json({ change });
-  });
+  router.post(
+    '/changes/:changeId/approve',
+    requirePermission('changes:review'),
+    async (req, res) => {
+      const { change } = await changes.approve(
+        req.auth.profileId,
+        req.auth.member,
+        req.params.changeId,
+      );
+      res.json({ change });
+    },
+  );
 
-  router.post('/changes/:changeId/reject', requirePermission('changes:review'), async (req, res) => {
-    const { reason } = parse(req.body ?? {}, schemas.reject);
-    res.json({ change: await changes.reject(req.auth.profileId, req.auth.member, req.params.changeId, reason) });
-  });
+  router.post(
+    '/changes/:changeId/reject',
+    requirePermission('changes:review'),
+    async (req, res) => {
+      const { reason } = parse(req.body ?? {}, schemas.reject);
+      res.json({
+        change: await changes.reject(
+          req.auth.profileId,
+          req.auth.member,
+          req.params.changeId,
+          reason,
+        ),
+      });
+    },
+  );
 
-  router.post('/changes/:changeId/withdraw', requirePermission('changes:propose'), async (req, res) => {
-    res.json({ change: await changes.withdraw(req.auth.profileId, req.auth.member, req.params.changeId) });
-  });
+  router.post(
+    '/changes/:changeId/withdraw',
+    requirePermission('changes:propose'),
+    async (req, res) => {
+      res.json({
+        change: await changes.withdraw(req.auth.profileId, req.auth.member, req.params.changeId),
+      });
+    },
+  );
 
   // Activity log
   router.get('/activity', requirePermission('activity:read'), async (req, res) => {
@@ -232,7 +280,10 @@ export function apiRouter({ services, config }) {
     if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
       throw new HttpError(400, 'limit must be a whole number from 1 to 200', 'VALIDATION');
     }
-    const before = typeof req.query.before === 'string' && req.query.before.length <= 64 ? req.query.before : undefined;
+    const before =
+      typeof req.query.before === 'string' && req.query.before.length <= 64
+        ? req.query.before
+        : undefined;
     res.json({ activity: await activity.list(req.auth.profileId, { limit, before }) });
   });
 
@@ -243,14 +294,18 @@ export function apiRouter({ services, config }) {
 
   router.put('/medical-id', requirePermission('changes:propose'), async (req, res) => {
     const data = parse(req.body, schemas.medicalId);
-    const outcome = await medicalId.propose(req.auth.profileId, req.auth.member, { notes: '', ...data });
+    const outcome = await medicalId.propose(req.auth.profileId, req.auth.member, {
+      notes: '',
+      ...data,
+    });
     sendChangeResult(res, outcome, { medicalId: await medicalId.get(req.auth.profileId) });
   });
 
   // QR code for the emergency link, to print or keep on the phone's lock screen.
   router.get('/medical-id/qr.svg', requirePermission('medicalId:read'), async (req, res) => {
     const { sharing } = await medicalId.get(req.auth.profileId);
-    if (!sharing.enabled) throw new HttpError(404, 'Turn on the medical ID link first.', 'NOT_SHARED');
+    if (!sharing.enabled)
+      throw new HttpError(404, 'Turn on the medical ID link first.', 'NOT_SHARED');
     res.set({ 'Content-Type': 'image/svg+xml', 'Cache-Control': 'private, no-store' });
     res.send(qrSvg(sharing.url, { label: 'QR code for the medical ID link' }));
   });
@@ -271,7 +326,11 @@ export function apiRouter({ services, config }) {
   router.post('/notifications/test', authLimiter, async (req, res) => {
     const me = req.auth.member;
     if (!services.notifier.routesFor(me).length) {
-      throw new HttpError(400, 'Add an email address and turn on email reminders first.', 'NO_CHANNEL');
+      throw new HttpError(
+        400,
+        'Add an email address and turn on email reminders first.',
+        'NO_CHANNEL',
+      );
     }
     const result = await services.notifier.send(req.auth.profileId, {
       id: `test_${me.id}_${services.now()}`,
@@ -279,7 +338,12 @@ export function apiRouter({ services, config }) {
       recipients: [me],
       build: (recipient) => messages.test({ recipient }),
     });
-    if (!result.sent) throw new HttpError(502, 'The test message could not be sent. Please check the email settings.', 'SEND_FAILED');
+    if (!result.sent)
+      throw new HttpError(
+        502,
+        'The test message could not be sent. Please check the email settings.',
+        'SEND_FAILED',
+      );
     res.json({ sent: result.sent });
   });
 

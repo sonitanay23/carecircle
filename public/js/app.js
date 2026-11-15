@@ -64,14 +64,32 @@ function signOut() {
 // ---------- Help (SOS) ----------
 async function help() {
   const share = field({ label: 'Share where I am', name: 'share', type: 'checkbox', value: true });
-  const note = field({ label: 'Message (optional)', name: 'note', hint: 'For example: I have fallen' });
+  const note = field({
+    label: 'Message (optional)',
+    name: 'note',
+    hint: 'For example: I have fallen',
+  });
   const ok = await dialog({
     title: 'Get help now?',
     body: h(
       'div',
       { class: 'stack' },
-      h('p', { class: 'big' }, 'This sends an alert to everyone in your family circle straight away.'),
-      h('div', { class: 'banner warn' }, icon('phone'), h('p', {}, h('strong', {}, 'In a medical emergency, call 112 now.'), ' (Or your local emergency number.)')),
+      h(
+        'p',
+        { class: 'big' },
+        'This sends an alert to everyone in your family circle straight away.',
+      ),
+      h(
+        'div',
+        { class: 'banner warn' },
+        icon('phone'),
+        h(
+          'p',
+          {},
+          h('strong', {}, 'In a medical emergency, call 112 now.'),
+          ' (Or your local emergency number.)',
+        ),
+      ),
       share,
       note,
     ),
@@ -86,21 +104,39 @@ async function help() {
   if (share.control.checked && navigator.geolocation) {
     location = await new Promise((resolve) =>
       navigator.geolocation.getCurrentPosition(
-        (p) => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, accuracyMeters: p.coords.accuracy }),
+        (p) =>
+          resolve({
+            latitude: p.coords.latitude,
+            longitude: p.coords.longitude,
+            accuracyMeters: p.coords.accuracy,
+          }),
         () => resolve(undefined),
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
       ),
     );
   }
   try {
-    const r = await api('/api/sos', { method: 'POST', body: { location, note: note.control.value.trim() || undefined } });
+    const r = await api('/api/sos', {
+      method: 'POST',
+      body: { location, note: note.control.value.trim() || undefined },
+    });
     await dialog({
       title: r.status === 'sent' ? 'Your family has been told' : 'Alert already sent',
-      body: h('p', { class: 'big' }, r.status === 'sent' ? `${r.sent} ${r.sent === 1 ? 'person was' : 'people were'} emailed${location ? ' with where you are' : ''}.` : 'Your alert from a moment ago was already sent.'),
+      body: h(
+        'p',
+        { class: 'big' },
+        r.status === 'sent'
+          ? `${r.sent} ${r.sent === 1 ? 'person was' : 'people were'} emailed${location ? ' with where you are' : ''}.`
+          : 'Your alert from a moment ago was already sent.',
+      ),
       actions: [{ label: 'OK', value: true, kind: 'primary' }],
     });
   } catch (err) {
-    await dialog({ title: 'Alert not sent', body: h('p', { role: 'alert', class: 'big' }, err.message), actions: [{ label: 'OK', value: true, kind: 'primary' }] });
+    await dialog({
+      title: 'Alert not sent',
+      body: h('p', { role: 'alert', class: 'big' }, err.message),
+      actions: [{ label: 'OK', value: true, kind: 'primary' }],
+    });
   }
 }
 
@@ -115,11 +151,27 @@ function renderShell(signedIn, tab) {
       'ul',
       {},
       TABS.map((t) =>
-        h('li', {}, h('a', { href: `#/${t.name}`, 'aria-current': t.name === tab ? 'page' : undefined }, icon(t.icon), h('span', {}, t.label))),
+        h(
+          'li',
+          {},
+          h(
+            'a',
+            { href: `#/${t.name}`, 'aria-current': t.name === tab ? 'page' : undefined },
+            icon(t.icon),
+            h('span', {}, t.label),
+          ),
+        ),
       ),
     ),
   );
-  headerTools.append(h('button', { type: 'button', class: 'button help', onclick: help }, icon('phone', { size: 20 }), 'Help'));
+  headerTools.append(
+    h(
+      'button',
+      { type: 'button', class: 'button help', onclick: help },
+      icon('phone', { size: 20 }),
+      'Help',
+    ),
+  );
 }
 
 async function render(opts = {}) {
@@ -136,7 +188,9 @@ async function render(opts = {}) {
     aiStatus = await api('/api/ai/status').catch(() => aiStatus);
     aiStatusFor = s.token;
   }
-  const ctx = s ? { ...s, ai: aiStatus, go, signOut, help, refresh: (o) => render({ keepScroll: true, ...o }) } : { go };
+  const ctx = s
+    ? { ...s, ai: aiStatus, go, signOut, help, refresh: (o) => render({ keepScroll: true, ...o }) }
+    : { go };
   renderShell(Boolean(s), route.tab);
   document.title = `${route.title} — CareCircle`;
   const scroll = window.scrollY;
@@ -148,7 +202,11 @@ async function render(opts = {}) {
     fresh.replaceChildren(
       h('h1', { tabindex: '-1' }, 'Something went wrong'),
       h('p', { role: 'alert', class: 'big' }, err.message),
-      h('button', { type: 'button', class: 'button primary', onclick: () => render() }, 'Try again'),
+      h(
+        'button',
+        { type: 'button', class: 'button primary', onclick: () => render() },
+        'Try again',
+      ),
     );
   }
   main.replaceChildren(fresh);

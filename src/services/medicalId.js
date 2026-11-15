@@ -2,7 +2,17 @@ import { paths } from '../store/index.js';
 import { HttpError } from '../lib/httpError.js';
 import { randomToken, sha256 } from '../lib/ids.js';
 
-export const BLOOD_GROUPS = Object.freeze(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'unknown']);
+export const BLOOD_GROUPS = Object.freeze([
+  'A+',
+  'A-',
+  'B+',
+  'B-',
+  'AB+',
+  'AB-',
+  'O+',
+  'O-',
+  'unknown',
+]);
 const CARD_ID = 'card';
 const VIEW_LOG_INTERVAL_MS = 60 * 60 * 1000;
 
@@ -21,7 +31,15 @@ const EMPTY_CARD = Object.freeze({
  * The elder can share it through a secret link (shown as a QR code) that works
  * without a passcode, and can turn that link off or replace it at any time.
  */
-export function createMedicalIdService({ store, activity, changes, now, config, logger, extraPublicInfo }) {
+export function createMedicalIdService({
+  store,
+  activity,
+  changes,
+  now,
+  config,
+  logger,
+  extraPublicInfo,
+}) {
   const medical = (pid) => store.collection(paths.medical(pid));
   const shares = () => store.collection(paths.medicalIdShares());
   const iso = () => new Date(now()).toISOString();
@@ -47,7 +65,9 @@ export function createMedicalIdService({ store, activity, changes, now, config, 
     emergencyContacts: card.emergencyContacts,
     notes: card.notes,
     updatedAt: card.updatedAt,
-    sharing: card.share ? { enabled: true, url: shareUrl(card.share.token), enabledAt: card.share.enabledAt } : { enabled: false },
+    sharing: card.share
+      ? { enabled: true, url: shareUrl(card.share.token), enabledAt: card.share.enabledAt }
+      : { enabled: false },
   });
 
   return {
@@ -86,7 +106,10 @@ export function createMedicalIdService({ store, activity, changes, now, config, 
       if (!card.share) return forMembers(card);
       await shares().delete(sha256(card.share.token));
       await medical(pid).set(CARD_ID, { ...card, share: null });
-      await activity.record(pid, elder, { action: 'medicalId.unshared', summary: `${elder.name} turned off the medical ID link.` });
+      await activity.record(pid, elder, {
+        action: 'medicalId.unshared',
+        summary: `${elder.name} turned off the medical ID link.`,
+      });
       return forMembers(await getCard(pid));
     },
 
@@ -102,7 +125,10 @@ export function createMedicalIdService({ store, activity, changes, now, config, 
 
       if (!card.lastViewedAt || now() - Date.parse(card.lastViewedAt) > VIEW_LOG_INTERVAL_MS) {
         await medical(pid).update(CARD_ID, { lastViewedAt: iso() });
-        await activity.record(pid, null, { action: 'medicalId.viewed', summary: 'Someone opened the medical ID link.' });
+        await activity.record(pid, null, {
+          action: 'medicalId.viewed',
+          summary: 'Someone opened the medical ID link.',
+        });
       }
       logger?.info('medical_id_viewed', { profileId: pid });
 

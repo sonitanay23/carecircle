@@ -6,14 +6,18 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
  * bumping the member's tokenVersion, which the auth middleware checks.
  */
 export function createTokenService({ secret, ttlSeconds, now = () => Date.now() }) {
-  if (!secret || secret.length < 32) throw new Error('Session secret must be at least 32 characters');
+  if (!secret || secret.length < 32)
+    throw new Error('Session secret must be at least 32 characters');
 
   const sign = (body) => createHmac('sha256', secret).update(body).digest('base64url');
 
   return {
     /** @param {object} claims @param {{ ttlSeconds?: number }} [opts] */
     issue(claims, opts = {}) {
-      const payload = { ...claims, exp: Math.floor(now() / 1000) + (opts.ttlSeconds ?? ttlSeconds) };
+      const payload = {
+        ...claims,
+        exp: Math.floor(now() / 1000) + (opts.ttlSeconds ?? ttlSeconds),
+      };
       const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
       return `${body}.${sign(body)}`;
     },

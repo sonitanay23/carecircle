@@ -3,7 +3,10 @@ import rateLimit from 'express-rate-limit';
 import { formatForPerson, zonedToUtc } from '../lib/time.js';
 
 const esc = (s) =>
-  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  String(s ?? '').replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
 
 /** Small server-rendered page: works from any email app, no JavaScript needed. */
 const page = ({ title, body }) => `<!doctype html>
@@ -31,7 +34,12 @@ ${body}
 export function actionsRouter({ services, config }) {
   const router = Router();
   router.use(
-    rateLimit({ windowMs: 15 * 60 * 1000, limit: config.isProduction ? 60 : 1000, standardHeaders: 'draft-8', legacyHeaders: false }),
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      limit: config.isProduction ? 60 : 1000,
+      standardHeaders: 'draft-8',
+      legacyHeaders: false,
+    }),
   );
   router.use((_req, res, next) => {
     res.set({ 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' });
@@ -48,7 +56,10 @@ export function actionsRouter({ services, config }) {
 
   const describe = async (action) => {
     const profile = await services.profiles.getProfile(action.pid);
-    const when = formatForPerson(zonedToUtc(action.date, action.time, profile.timezone), action.member.timezone ?? profile.timezone);
+    const when = formatForPerson(
+      zonedToUtc(action.date, action.time, profile.timezone),
+      action.member.timezone ?? profile.timezone,
+    );
     return { label: `${action.med.name}${action.med.dose ? ` ${action.med.dose}` : ''}`, when };
   };
 

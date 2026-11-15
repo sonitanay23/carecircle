@@ -23,7 +23,10 @@ after(() => new Promise((resolve) => server.close(resolve)));
 const post = async (path, body, token) => {
   const res = await fetch(`${base}${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(body),
   });
   return { status: res.status, body: await res.json() };
@@ -31,7 +34,8 @@ const post = async (path, body, token) => {
 
 /** The welcome email is sent in the background, so wait for it briefly. */
 const waitForMail = async (count) => {
-  for (let i = 0; i < 50 && email.outbox.length < count; i += 1) await new Promise((r) => setTimeout(r, 10));
+  for (let i = 0; i < 50 && email.outbox.length < count; i += 1)
+    await new Promise((r) => setTimeout(r, 10));
 };
 
 test('a new elder gets a welcome email with their CareCircle code', async () => {
@@ -66,8 +70,18 @@ test('a family member who joins also gets the code by email', async () => {
 });
 
 test('welcome message wording differs for elder and family', () => {
-  const elderMsg = messages.welcome({ recipient: { name: 'Kamala Rao', role: 'elder' }, elderName: 'Kamala Rao', code: 'ABCD-EFGH', appUrl: 'https://x' });
-  const familyMsg = messages.welcome({ recipient: { name: 'Ravi', role: 'family' }, elderName: 'Kamala Rao', code: 'ABCD-EFGH', appUrl: 'https://x' });
+  const elderMsg = messages.welcome({
+    recipient: { name: 'Kamala Rao', role: 'elder' },
+    elderName: 'Kamala Rao',
+    code: 'ABCD-EFGH',
+    appUrl: 'https://x',
+  });
+  const familyMsg = messages.welcome({
+    recipient: { name: 'Ravi', role: 'family' },
+    elderName: 'Kamala Rao',
+    code: 'ABCD-EFGH',
+    appUrl: 'https://x',
+  });
   assert.match(elderMsg.text, /You stay in charge/);
   assert.match(familyMsg.text, /joined Kamala's CareCircle/);
   assert.match(familyMsg.html, /ABCD-EFGH/);

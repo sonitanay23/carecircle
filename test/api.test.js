@@ -36,8 +36,14 @@ const createElder = async () => {
   return res.body;
 };
 
-const addFamily = async (elder, { name = 'Riya', role = 'family', passcode = 'riya-secret-7' } = {}) => {
-  const invite = await call('POST', '/members/invites', { token: elder.token, body: { name, role } });
+const addFamily = async (
+  elder,
+  { name = 'Riya', role = 'family', passcode = 'riya-secret-7' } = {},
+) => {
+  const invite = await call('POST', '/members/invites', {
+    token: elder.token,
+    body: { name, role },
+  });
   assert.equal(invite.status, 201);
   const joined = await call('POST', '/members/join', {
     body: {
@@ -59,7 +65,9 @@ test('sign up, sign in and view my profile', async () => {
   assert.equal(elder.me.role, 'elder');
   assert.equal(elder.me.passcodeHash, undefined, 'hash never leaves the server');
 
-  const login = await call('POST', '/sessions', { body: { profileCode: elder.profile.code, passcode: 'mango-tree-42' } });
+  const login = await call('POST', '/sessions', {
+    body: { profileCode: elder.profile.code, passcode: 'mango-tree-42' },
+  });
   assert.equal(login.status, 200);
   const me = await call('GET', '/me', { token: login.body.token });
   assert.equal(me.body.me.name, 'Kamala Devi');
@@ -71,7 +79,9 @@ test('requests without a valid session are refused', async () => {
 });
 
 test('invalid input returns a clear 400', async () => {
-  const res = await call('POST', '/profiles', { body: { elderName: '', email: 'bad', timezone: 'Nowhere', language: 'xx', passcode: 'a' } });
+  const res = await call('POST', '/profiles', {
+    body: { elderName: '', email: 'bad', timezone: 'Nowhere', language: 'xx', passcode: 'a' },
+  });
   assert.equal(res.status, 400);
   assert.equal(res.body.error.code, 'VALIDATION');
   assert.match(res.body.error.message, /email/);
@@ -80,8 +90,20 @@ test('invalid input returns a clear 400', async () => {
 test('family cannot manage members or review changes', async () => {
   const elder = await createElder();
   const family = await addFamily(elder);
-  assert.equal((await call('POST', '/members/invites', { token: family.token, body: { name: 'X', role: 'family' } })).status, 403);
-  assert.equal((await call('PATCH', '/profile', { token: family.token, body: { requireApproval: false } })).status, 403);
+  assert.equal(
+    (
+      await call('POST', '/members/invites', {
+        token: family.token,
+        body: { name: 'X', role: 'family' },
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (await call('PATCH', '/profile', { token: family.token, body: { requireApproval: false } }))
+      .status,
+    403,
+  );
   assert.equal((await call('POST', '/medical-id/sharing', { token: family.token })).status, 403);
 });
 
@@ -96,9 +118,15 @@ test('full approval flow over HTTP', async () => {
 
   const pending = await call('GET', '/changes?status=pending', { token: elder.token });
   assert.equal(pending.body.changes.length, 1);
-  assert.equal((await call('POST', `/changes/${pending.body.changes[0].id}/approve`, { token: family.token })).status, 403);
+  assert.equal(
+    (await call('POST', `/changes/${pending.body.changes[0].id}/approve`, { token: family.token }))
+      .status,
+    403,
+  );
 
-  const approved = await call('POST', `/changes/${pending.body.changes[0].id}/approve`, { token: elder.token });
+  const approved = await call('POST', `/changes/${pending.body.changes[0].id}/approve`, {
+    token: elder.token,
+  });
   assert.equal(approved.status, 200);
   const id = await call('GET', '/medical-id', { token: family.token });
   assert.equal(id.body.medicalId.bloodGroup, 'A+');
@@ -112,7 +140,10 @@ test('removing a member ends their session immediately', async () => {
   const elder = await createElder();
   const family = await addFamily(elder);
   assert.equal((await call('GET', '/me', { token: family.token })).status, 200);
-  assert.equal((await call('DELETE', `/members/${family.me.id}`, { token: elder.token })).status, 204);
+  assert.equal(
+    (await call('DELETE', `/members/${family.me.id}`, { token: elder.token })).status,
+    204,
+  );
   assert.equal((await call('GET', '/me', { token: family.token })).status, 401);
 });
 
@@ -129,7 +160,10 @@ test('changing passcode returns a new session and ends the old one', async () =>
 
 test('public medical ID link works without a passcode and is not cached', async () => {
   const elder = await createElder();
-  await call('PUT', '/medical-id', { token: elder.token, body: { bloodGroup: 'O-', allergies: [], conditions: [], emergencyContacts: [] } });
+  await call('PUT', '/medical-id', {
+    token: elder.token,
+    body: { bloodGroup: 'O-', allergies: [], conditions: [], emergencyContacts: [] },
+  });
   const shared = await call('POST', '/medical-id/sharing', { token: elder.token });
   const token = shared.body.medicalId.sharing.url.split('/').pop();
   const view = await call('GET', `/public/medical-id/${token}`);

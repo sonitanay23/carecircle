@@ -2,7 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildTestServices, seedFamily } from './helpers.js';
 
-const card = { bloodGroup: 'B+', allergies: ['Penicillin'], conditions: [], emergencyContacts: [], notes: '' };
+const card = {
+  bloodGroup: 'B+',
+  allergies: ['Penicillin'],
+  conditions: [],
+  emergencyContacts: [],
+  notes: '',
+};
 
 test("family edits wait for the elder's approval", async () => {
   const { services } = buildTestServices();
@@ -18,7 +24,10 @@ test("family edits wait for the elder's approval", async () => {
 
   await services.changes.approve(pid, elder, outcome.change.id);
   assert.equal((await services.medicalId.get(pid)).bloodGroup, 'B+');
-  await assert.rejects(services.changes.approve(pid, elder, outcome.change.id), (e) => e.status === 409);
+  await assert.rejects(
+    services.changes.approve(pid, elder, outcome.change.id),
+    (e) => e.status === 409,
+  );
 
   const log = await services.activity.list(pid);
   assert.match(log[0].summary, /Kamala Devi approved Riya's change/);

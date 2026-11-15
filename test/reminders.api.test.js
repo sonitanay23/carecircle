@@ -1,7 +1,13 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../src/app.js';
-import { buildTestServices, silentLogger, seedFamily, addMedication, createClock } from './helpers.js';
+import {
+  buildTestServices,
+  silentLogger,
+  seedFamily,
+  addMedication,
+  createClock,
+} from './helpers.js';
 
 let server;
 let root;
@@ -22,7 +28,11 @@ before(async () => {
 
 after(() => new Promise((resolve) => server.close(resolve)));
 
-const runReminders = (secret) => fetch(`${root}/internal/reminders/run`, { method: 'POST', headers: secret ? { 'x-cron-secret': secret } : {} });
+const runReminders = (secret) =>
+  fetch(`${root}/internal/reminders/run`, {
+    method: 'POST',
+    headers: secret ? { 'x-cron-secret': secret } : {},
+  });
 
 test('the scheduler endpoint needs the secret', async () => {
   assert.equal((await runReminders()).status, 401);
@@ -35,7 +45,9 @@ test('the scheduler endpoint needs the secret', async () => {
 });
 
 test('one-tap email link: GET only asks, POST records the dose', async () => {
-  const mail = ctx.email.outbox.find((m) => m.to === 'kamala@example.com' && m.subject.startsWith('Time for'));
+  const mail = ctx.email.outbox.find(
+    (m) => m.to === 'kamala@example.com' && m.subject.startsWith('Time for'),
+  );
   assert.ok(mail, 'reminder email was sent');
   const url = mail.text.match(/https:\/\/care\.example(\/a\/\S+)/)[1];
 
@@ -78,7 +90,11 @@ test('members can send themselves a test email and see notification history', as
   const auth = { authorization: `Bearer ${login.token}` };
   const sent = await fetch(`${root}/api/notifications/test`, { method: 'POST', headers: auth });
   assert.equal(sent.status, 200);
-  assert.ok(ctx.email.outbox.some((m) => m.subject === 'CareCircle test message' && m.to === 'riya@example.com'));
+  assert.ok(
+    ctx.email.outbox.some(
+      (m) => m.subject === 'CareCircle test message' && m.to === 'riya@example.com',
+    ),
+  );
   const history = await fetch(`${root}/api/notifications`, { headers: auth }).then((r) => r.json());
   assert.ok(history.notifications.some((n) => n.kind === 'dose_upcoming'));
 });

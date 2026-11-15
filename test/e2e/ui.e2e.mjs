@@ -11,7 +11,12 @@ import { startE2eServer, seen } from './server.mjs';
 let app;
 let browser;
 const shots = process.env.E2E_SCREENSHOTS;
-const PHONE = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
+const PHONE = {
+  viewport: { width: 390, height: 844 },
+  deviceScaleFactor: 2,
+  isMobile: true,
+  hasTouch: true,
+};
 
 before(async () => {
   app = await startE2eServer(8090);
@@ -23,7 +28,8 @@ after(async () => {
 });
 
 /** Taps a bottom-navigation tab. */
-const tab = (page, name) => page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name, exact: true }).click();
+const tab = (page, name) =>
+  page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name, exact: true }).click();
 /** Taps one of the big choice buttons ("Evening 8 pm", "After food"). */
 const choose = (page, text) => page.locator('label.choice', { hasText: text }).first().click();
 
@@ -37,18 +43,22 @@ const snap = async (page, name) => {
 async function a11yCheck(page, where) {
   const problems = await page.evaluate(() => {
     const out = [];
-    const name = (el) => (el.getAttribute('aria-label') || el.textContent || el.getAttribute('title') || '').trim();
+    const name = (el) =>
+      (el.getAttribute('aria-label') || el.textContent || el.getAttribute('title') || '').trim();
     document.querySelectorAll('input:not([type=hidden]), select, textarea').forEach((el) => {
-      const labelled = el.labels?.length || el.getAttribute('aria-label') || el.getAttribute('aria-labelledby');
+      const labelled =
+        el.labels?.length || el.getAttribute('aria-label') || el.getAttribute('aria-labelledby');
       if (!labelled) out.push(`unlabelled ${el.tagName} name=${el.name}`);
     });
     document.querySelectorAll('button, a[href]').forEach((el) => {
-      if (!name(el) && !el.querySelector('img[alt]:not([alt=""])')) out.push(`nameless ${el.tagName}`);
+      if (!name(el) && !el.querySelector('img[alt]:not([alt=""])'))
+        out.push(`nameless ${el.tagName}`);
     });
     document.querySelectorAll('img').forEach((el) => {
       if (!el.hasAttribute('alt')) out.push('img without alt');
     });
-    if (document.querySelectorAll('h1').length !== 1) out.push(`h1 count ${document.querySelectorAll('h1').length}`);
+    if (document.querySelectorAll('h1').length !== 1)
+      out.push(`h1 count ${document.querySelectorAll('h1').length}`);
     if (!document.documentElement.lang) out.push('no lang');
     const ids = [...document.querySelectorAll('[id]')].map((e) => e.id);
     const dup = ids.filter((id, i) => ids.indexOf(id) !== i);
@@ -56,10 +66,12 @@ async function a11yCheck(page, where) {
     // Touch targets at least 44px tall (visible ones).
     document.querySelectorAll('.button, .tile, .choice > span, .site-nav a').forEach((el) => {
       const r = el.getBoundingClientRect();
-      if (r.height && r.width && r.height < 44) out.push(`small target "${name(el).slice(0, 20)}" ${Math.round(r.height)}px`);
+      if (r.height && r.width && r.height < 44)
+        out.push(`small target "${name(el).slice(0, 20)}" ${Math.round(r.height)}px`);
     });
     // Nothing wider than the screen (no sideways scrolling).
-    if (document.documentElement.scrollWidth > window.innerWidth + 1) out.push(`horizontal scroll ${document.documentElement.scrollWidth}px`);
+    if (document.documentElement.scrollWidth > window.innerWidth + 1)
+      out.push(`horizontal scroll ${document.documentElement.scrollWidth}px`);
     return out;
   });
   assert.deepEqual(problems, [], `accessibility problems on ${where}`);
@@ -140,7 +152,11 @@ test('elder signs up, adds a medicine with big time buttons, and takes it from T
 test('prescription scan: a big phone photo is shrunk, read, checked and added', async () => {
   const ctx = await browser.newContext({ ...PHONE, timezoneId: 'Asia/Kolkata' });
   const page = await ctx.newPage();
-  await createCircle(page, { name: 'Gopal Rao', email: 'gopal@example.com', passcode: 'tall-tree-48' });
+  await createCircle(page, {
+    name: 'Gopal Rao',
+    email: 'gopal@example.com',
+    passcode: 'tall-tree-48',
+  });
   await tab(page, 'Medicines');
 
   // A 3000x4000 photo, the size a phone camera makes.
@@ -159,20 +175,37 @@ test('prescription scan: a big phone photo is shrunk, read, checked and added', 
     return Array.from(new Uint8Array(await blob.arrayBuffer()));
   });
   assert.ok(photo.length > 100_000, 'test photo is big');
-  await page.locator('#scan-input').setInputFiles({ name: 'prescription.png', mimeType: 'image/png', buffer: Buffer.from(photo) });
+  await page
+    .locator('#scan-input')
+    .setInputFiles({ name: 'prescription.png', mimeType: 'image/png', buffer: Buffer.from(photo) });
   await page.getByRole('heading', { name: 'We found 1 medicine' }).waitFor();
   assert.equal(seen.lastImage.mimeType, 'image/jpeg', 'converted to JPEG before upload');
-  assert.ok(seen.lastImage.bytes < photo.length && seen.lastImage.bytes < 1_500_000, `upload shrunk from ${photo.length} to ${seen.lastImage.bytes} bytes`);
+  assert.ok(
+    seen.lastImage.bytes < photo.length && seen.lastImage.bytes < 1_500_000,
+    `upload shrunk from ${photo.length} to ${seen.lastImage.bytes} bytes`,
+  );
   await page.getByText('Please check this one carefully').waitFor();
   await a11yCheck(page, 'scan-results');
-  assert.doesNotMatch(await page.locator('main').innerText(), /^0$/m, 'no stray "0" when there are no warnings');
+  assert.doesNotMatch(
+    await page.locator('main').innerText(),
+    /^0$/m,
+    'no stray "0" when there are no warnings',
+  );
   await snap(page, '06-scan-results');
 
   await page.getByRole('button', { name: 'Check and add' }).click();
   assert.equal(await page.getByLabel('Medicine name').inputValue(), 'Atorvastatin');
-  assert.equal(await page.getByRole('checkbox', { name: /Bedtime/ }).isChecked(), true, '0-0-1 at night became Bedtime');
+  assert.equal(
+    await page.getByRole('checkbox', { name: /Bedtime/ }).isChecked(),
+    true,
+    '0-0-1 at night became Bedtime',
+  );
   assert.equal(await page.getByRole('checkbox', { name: /Morning/ }).isChecked(), false);
-  assert.equal(await page.getByRole('radio', { name: 'After food' }).isChecked(), true, 'food instruction pre-selected');
+  assert.equal(
+    await page.getByRole('radio', { name: 'After food' }).isChecked(),
+    true,
+    'food instruction pre-selected',
+  );
   await page.getByRole('button', { name: 'Save medicine' }).click();
   await page.getByText('Atorvastatin 10 mg added.').waitFor();
   // The list updates underneath without losing the scan results.
@@ -184,7 +217,11 @@ test('prescription scan: a big phone photo is shrunk, read, checked and added', 
 test('family suggests a change; the elder approves it', async () => {
   const elderCtx = await browser.newContext({ ...PHONE, timezoneId: 'Asia/Kolkata' });
   const elder = await elderCtx.newPage();
-  await createCircle(elder, { name: 'Ravi Kumar', email: 'ravi@example.com', passcode: 'blue-river-58' });
+  await createCircle(elder, {
+    name: 'Ravi Kumar',
+    email: 'ravi@example.com',
+    passcode: 'blue-river-58',
+  });
   await tab(elder, 'More');
   await a11yCheck(elder, 'more');
   await snap(elder, '07-more');
@@ -201,7 +238,11 @@ test('family suggests a change; the elder approves it', async () => {
   const fam = await famCtx.newPage();
   await fam.goto(`${app.url}/join?profile=${profileCode}`);
   await fam.getByRole('heading', { name: 'Join a CareCircle' }).waitFor();
-  assert.equal(await fam.getByLabel('CareCircle code').inputValue(), profileCode, 'invite link pre-fills the code');
+  assert.equal(
+    await fam.getByLabel('CareCircle code').inputValue(),
+    profileCode,
+    'invite link pre-fills the code',
+  );
   await fam.getByLabel('Invite code').fill(inviteCode);
   await fam.getByLabel('Your email').fill('priya@example.com');
   await fam.getByLabel('Choose a passcode').fill('priya-secret-9');
@@ -214,11 +255,17 @@ test('family suggests a change; the elder approves it', async () => {
   await fam.getByLabel('Medicine name').fill('Amlodipine');
   await fam.getByLabel('Strength (optional)').fill('5 mg');
   await fam.getByRole('button', { name: 'Save medicine' }).click();
-  await fam.getByText(/sent for approval/).first().waitFor();
+  await fam
+    .getByText(/sent for approval/)
+    .first()
+    .waitFor();
 
   await tab(elder, 'Today');
   await elder.getByRole('link', { name: /suggested 1 change/ }).click();
-  await elder.locator('.change').getByText('Priya suggested: add Amlodipine 5 mg (08:00)').waitFor();
+  await elder
+    .locator('.change')
+    .getByText('Priya suggested: add Amlodipine 5 mg (08:00)')
+    .waitFor();
   await snap(elder, '08-approval');
   await elder.getByRole('button', { name: '✓ Yes, approve' }).click();
   await elder.getByText(/approved Priya's change/).waitFor();
@@ -230,14 +277,25 @@ test('family suggests a change; the elder approves it', async () => {
 });
 
 test('visits, health readings, medical ID QR and the Help button', async () => {
-  const ctx = await browser.newContext({ ...PHONE, timezoneId: 'Asia/Kolkata', permissions: ['geolocation'], geolocation: { latitude: 17.385, longitude: 78.4867, accuracy: 20 } });
+  const ctx = await browser.newContext({
+    ...PHONE,
+    timezoneId: 'Asia/Kolkata',
+    permissions: ['geolocation'],
+    geolocation: { latitude: 17.385, longitude: 78.4867, accuracy: 20 },
+  });
   const page = await ctx.newPage();
-  await createCircle(page, { name: 'Lakshmi Iyer', email: 'lakshmi@example.com', passcode: 'green-leaf-73' });
+  await createCircle(page, {
+    name: 'Lakshmi Iyer',
+    email: 'lakshmi@example.com',
+    passcode: 'green-leaf-73',
+  });
 
   await tab(page, 'Visits');
   await page.getByRole('button', { name: /Add a doctor visit/ }).click();
   await page.getByLabel('What is the visit for?').fill('Heart check-up');
-  await page.getByLabel('Date').fill(new Date(Date.now() + 3 * 86_400_000).toLocaleDateString('en-CA'));
+  await page
+    .getByLabel('Date')
+    .fill(new Date(Date.now() + 3 * 86_400_000).toLocaleDateString('en-CA'));
   await page.getByRole('textbox', { name: 'Time', exact: true }).fill('10:30');
   await page.getByLabel('Doctor (optional)').fill('Dr Rao');
   await page.getByLabel('Address (optional)').fill('Jubilee Hills, Hyderabad');
@@ -254,7 +312,10 @@ test('visits, health readings, medical ID QR and the Help button', async () => {
 
   await tab(page, 'More');
   await page.getByRole('link', { name: /Health readings/ }).click();
-  for (const [s, d] of [['128', '84'], ['152', '96']]) {
+  for (const [s, d] of [
+    ['128', '84'],
+    ['152', '96'],
+  ]) {
     await page.getByLabel('Upper number (systolic)').fill(s);
     await page.getByLabel('Lower number (diastolic)').fill(d);
     await page.getByRole('button', { name: 'Save reading' }).click();
@@ -295,7 +356,10 @@ test('visits, health readings, medical ID QR and the Help button', async () => {
   await snap(page, '13-help');
   await page.getByRole('button', { name: 'Send alert to family' }).click();
   await page.getByRole('heading', { name: 'Alert not sent' }).waitFor();
-  await page.getByRole('dialog').getByText(/call your local emergency number/).waitFor();
+  await page
+    .getByRole('dialog')
+    .getByText(/call your local emergency number/)
+    .waitFor();
   await page.getByRole('button', { name: 'OK' }).click();
   await ctx.close();
 });
@@ -303,20 +367,33 @@ test('visits, health readings, medical ID QR and the Help button', async () => {
 test('text size and high contrast stay on after reload; keyboard users can skip to content', async () => {
   const ctx = await browser.newContext(PHONE);
   const page = await ctx.newPage();
-  await createCircle(page, { name: 'Test Elder', email: 't@example.com', passcode: 'quiet-hill-27' });
+  await createCircle(page, {
+    name: 'Test Elder',
+    email: 't@example.com',
+    passcode: 'quiet-hill-27',
+  });
   await tab(page, 'More');
   await page.getByRole('button', { name: 'Extra large' }).click();
   await page.getByRole('button', { name: 'High contrast' }).click();
   await page.reload();
   await page.getByRole('heading', { name: 'More' }).waitFor();
-  assert.equal(await page.evaluate(() => document.documentElement.className), 'text-xl contrast-high');
-  assert.equal(await page.getByRole('button', { name: 'Extra large' }).getAttribute('aria-pressed'), 'true');
+  assert.equal(
+    await page.evaluate(() => document.documentElement.className),
+    'text-xl contrast-high',
+  );
+  assert.equal(
+    await page.getByRole('button', { name: 'Extra large' }).getAttribute('aria-pressed'),
+    'true',
+  );
   await a11yCheck(page, 'more-xl-contrast');
   await tab(page, 'Today');
   await snap(page, '14-xl-contrast');
 
   await page.reload();
   await page.keyboard.press('Tab');
-  assert.equal(await page.evaluate(() => document.activeElement.textContent), 'Skip to main content');
+  assert.equal(
+    await page.evaluate(() => document.activeElement.textContent),
+    'Skip to main content',
+  );
   await ctx.close();
 });

@@ -52,12 +52,19 @@ export function createDoseService({ store, activity, medications, profiles, conf
 
     async forDate(pid, date, profile) {
       const p = profile ?? (await profiles.getProfile(pid));
-      const [allMeds, records] = await Promise.all([medications.all(pid), doses(pid).list({ where: [['date', '==', date]] })]);
+      const [allMeds, records] = await Promise.all([
+        medications.all(pid),
+        doses(pid).list({ where: [['date', '==', date]] }),
+      ]);
       const byKey = new Map(records.map((r) => [r.id, r]));
       const scheduled = allMeds
-        .flatMap((med) => dosesOn(med, date, p.timezone).map((d) => describeDose(med, d, byKey.get(d.key))))
+        .flatMap((med) =>
+          dosesOn(med, date, p.timezone).map((d) => describeDose(med, d, byKey.get(d.key))),
+        )
         .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt) || a.name.localeCompare(b.name));
-      const asNeeded = records.filter((r) => r.asNeeded).sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
+      const asNeeded = records
+        .filter((r) => r.asNeeded)
+        .sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
       return { date, timezone: p.timezone, doses: scheduled, asNeededTaken: asNeeded };
     },
 
@@ -72,7 +79,12 @@ export function createDoseService({ store, activity, medications, profiles, conf
       const recordedBy = { id: actor.id, name: actor.name, role: actor.role };
 
       if (med.asNeeded) {
-        if (status !== 'taken') throw new HttpError(400, 'For "when needed" medicines, only log when it is taken.', 'VALIDATION');
+        if (status !== 'taken')
+          throw new HttpError(
+            400,
+            'For "when needed" medicines, only log when it is taken.',
+            'VALIDATION',
+          );
         const at = now();
         const key = `${med.id}_prn_${at}`;
         const record = await doses(pid).create(key, {
@@ -98,22 +110,37 @@ export function createDoseService({ store, activity, medications, profiles, conf
         return { dose: record, supply: updated ? supplyStatus(updated) : supplyStatus(med) };
       }
 
-      if (!date || !time) throw new HttpError(400, 'date and time are required for scheduled medicines', 'VALIDATION');
+      if (!date || !time)
+        throw new HttpError(
+          400,
+          'date and time are required for scheduled medicines',
+          'VALIDATION',
+        );
       const key = doseKey(med.id, date, time);
       const existing = await doses(pid).get(key);
       if (!existing && (!isScheduledOn(med, date) || !med.schedule.times.includes(time))) {
-        throw new HttpError(400, `${label(med)} is not scheduled at ${time} on ${date}.`, 'NOT_SCHEDULED');
+        throw new HttpError(
+          400,
+          `${label(med)} is not scheduled at ${time} on ${date}.`,
+          'NOT_SCHEDULED',
+        );
       }
       const scheduledAtMs = zonedToUtc(date, time, profile.timezone);
       if (scheduledAtMs - now() > EARLY_WINDOW_MS) {
-        throw new HttpError(400, 'That dose is not due yet. You can log it up to 2 hours early.', 'TOO_EARLY');
+        throw new HttpError(
+          400,
+          'That dose is not due yet. You can log it up to 2 hours early.',
+          'TOO_EARLY',
+        );
       }
-      if (existing?.status === status) return { dose: existing, supply: supplyStatus(med), unchanged: true };
+      if (existing?.status === status)
+        return { dose: existing, supply: supplyStatus(med), unchanged: true };
 
       // Keep the tablet count right when a dose changes between taken and not taken.
       const wasTaken = existing?.status === 'taken';
       const isTaken = status === 'taken';
-      const updatedMed = wasTaken === isTaken ? null : await medications.adjustStock(pid, med.id, isTaken ? -1 : 1);
+      const updatedMed =
+        wasTaken === isTaken ? null : await medications.adjustStock(pid, med.id, isTaken ? -1 : 1);
 
       const record = await doses(pid).set(key, {
         medicationId: med.id,
@@ -183,7 +210,10 @@ export function createDoseService({ store, activity, medications, profiles, conf
       const profile = await profiles.getProfile(pid);
       const today = localDate(now(), profile.timezone);
       const from = addDays(today, -(days - 1));
-      const [allMeds, records] = await Promise.all([medications.all(pid), api.history(pid, { from, to: today })]);
+      const [allMeds, records] = await Promise.all([
+        medications.all(pid),
+        api.history(pid, { from, to: today }),
+      ]);
       const byKey = new Map(records.map((r) => [r.id, r]));
 
       const perMed = new Map();
@@ -197,7 +227,15 @@ export function createDoseService({ store, activity, medications, profiles, conf
             if (at + graceMs > now() && !rec) continue; // still time to take it
             if (at < Date.parse(med.createdAt) && !rec) continue; // before the medicine was added
             const status = rec?.status ?? 'missed';
-            const m = perMed.get(med.id) ?? { medicationId: med.id, name: label(med), expected: 0, taken: 0, late: 0, skipped: 0, missed: 0 };
+            const m = perMed.get(med.id) ?? {
+              medicationId: med.id,
+              name: label(med),
+              expected: 0,
+              taken: 0,
+              late: 0,
+              skipped: 0,
+              missed: 0,
+            };
             m.expected += 1;
             m[status] += 1;
             if (status === 'taken' && rec?.late) m.late += 1;
@@ -210,7 +248,12 @@ export function createDoseService({ store, activity, medications, profiles, conf
       }
 
       const totals = perDay.reduce(
-        (acc, d) => ({ expected: acc.expected + d.expected, taken: acc.taken + d.taken, skipped: acc.skipped + d.skipped, missed: acc.missed + d.missed }),
+        (acc, d) => ({
+          expected: acc.expected + d.expected,
+          taken: acc.taken + d.taken,
+          skipped: acc.skipped + d.skipped,
+          missed: acc.missed + d.missed,
+        }),
         { expected: 0, taken: 0, skipped: 0, missed: 0 },
       );
       // Streak: consecutive most-recent days where every expected dose was taken.
@@ -227,7 +270,10 @@ export function createDoseService({ store, activity, medications, profiles, conf
         timezone: profile.timezone,
         totals: { ...totals, adherencePercent: rate(totals.taken, totals.expected) },
         streakDays,
-        medications: [...perMed.values()].map((m) => ({ ...m, adherencePercent: rate(m.taken, m.expected) })),
+        medications: [...perMed.values()].map((m) => ({
+          ...m,
+          adherencePercent: rate(m.taken, m.expected),
+        })),
         days: perDay.map((d) => ({ ...d, adherencePercent: rate(d.taken, d.expected) })),
       };
     },

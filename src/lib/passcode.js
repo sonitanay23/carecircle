@@ -38,7 +38,12 @@ export async function verifyPasscode(passcode, stored) {
   const [scheme, saltB64, hashB64] = stored.split('$');
   if (scheme !== 'scrypt' || !saltB64 || !hashB64) return false;
   const expected = Buffer.from(hashB64, 'base64');
-  const actual = await scryptAsync(passcode, Buffer.from(saltB64, 'base64'), expected.length, PARAMS);
+  const actual = await scryptAsync(
+    passcode,
+    Buffer.from(saltB64, 'base64'),
+    expected.length,
+    PARAMS,
+  );
   return timingSafeEqual(actual, expected);
 }
 

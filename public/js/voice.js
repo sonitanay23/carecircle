@@ -6,7 +6,19 @@
  */
 import { api } from './api.js';
 
-const LOCALES = { en: 'en-IN', hi: 'hi-IN', ta: 'ta-IN', te: 'te-IN', bn: 'bn-IN', mr: 'mr-IN', gu: 'gu-IN', kn: 'kn-IN', ml: 'ml-IN', pa: 'pa-IN', ur: 'ur-IN' };
+const LOCALES = {
+  en: 'en-IN',
+  hi: 'hi-IN',
+  ta: 'ta-IN',
+  te: 'te-IN',
+  bn: 'bn-IN',
+  mr: 'mr-IN',
+  gu: 'gu-IN',
+  kn: 'kn-IN',
+  ml: 'ml-IN',
+  pa: 'pa-IN',
+  ur: 'ur-IN',
+};
 let current = null;
 
 export function stopSpeaking() {
@@ -21,12 +33,17 @@ export function stopSpeaking() {
 export async function speak(text, lang = 'en') {
   stopSpeaking();
   try {
-    const blob = await api('/api/ai/speak', { method: 'POST', body: { text: text.slice(0, 1000), lang }, as: 'blob' });
+    const blob = await api('/api/ai/speak', {
+      method: 'POST',
+      body: { text: text.slice(0, 1000), lang },
+      as: 'blob',
+    });
     current = new Audio(URL.createObjectURL(blob));
     await current.play();
     return 'cloud';
   } catch {
-    if (!('speechSynthesis' in window)) throw new Error('Read-aloud is not available on this device.');
+    if (!('speechSynthesis' in window))
+      throw new Error('Read-aloud is not available on this device.');
     const u = new SpeechSynthesisUtterance(text);
     u.lang = LOCALES[lang] ?? 'en-IN';
     u.rate = 0.9;
@@ -50,7 +67,14 @@ export function listen(lang = 'en') {
     rec.interimResults = false;
     rec.maxAlternatives = 1;
     rec.onresult = (e) => resolve(e.results[0][0].transcript);
-    rec.onerror = (e) => reject(new Error(e.error === 'not-allowed' ? 'Please allow the microphone to ask by voice.' : 'Sorry, I did not catch that. Please try again.'));
+    rec.onerror = (e) =>
+      reject(
+        new Error(
+          e.error === 'not-allowed'
+            ? 'Please allow the microphone to ask by voice.'
+            : 'Sorry, I did not catch that. Please try again.',
+        ),
+      );
     rec.onend = () => resolve('');
     rec.start();
   });

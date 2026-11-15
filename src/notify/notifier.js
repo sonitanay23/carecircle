@@ -14,7 +14,13 @@ export function createNotifier({ store, channels, logger, now, translator }) {
   const localize = async (message, language) => {
     if (!translator || !language || language === 'en' || !message.parts) return message;
     const p = message.parts;
-    const strings = [p.subject, p.heading, ...p.paragraphs, ...p.actions.map((a) => a.label), p.footer];
+    const strings = [
+      p.subject,
+      p.heading,
+      ...p.paragraphs,
+      ...p.actions.map((a) => a.label),
+      p.footer,
+    ];
     try {
       const t = await translator.translate(strings, language);
       const n = p.paragraphs.length;
@@ -34,7 +40,8 @@ export function createNotifier({ store, channels, logger, now, translator }) {
   /** Which channels can reach this member right now. */
   const routesFor = (member) => {
     const routes = [];
-    if (channels.email && member.notify?.email && member.email) routes.push({ channel: channels.email, to: member.email });
+    if (channels.email && member.notify?.email && member.email)
+      routes.push({ channel: channels.email, to: member.email });
     return routes;
   };
 
@@ -63,10 +70,27 @@ export function createNotifier({ store, channels, logger, now, translator }) {
         for (const { channel, to } of routesFor(member)) {
           try {
             const result = await channel.send({ to, ...message, member });
-            deliveries.push({ memberId: member.id, name: member.name, channel: channel.name, status: 'sent', providerId: result?.id ?? null });
+            deliveries.push({
+              memberId: member.id,
+              name: member.name,
+              channel: channel.name,
+              status: 'sent',
+              providerId: result?.id ?? null,
+            });
           } catch (err) {
-            logger.warn('notification_failed', { kind, channel: channel.name, memberId: member.id, error: err.message });
-            deliveries.push({ memberId: member.id, name: member.name, channel: channel.name, status: 'failed', error: err.message.slice(0, 200) });
+            logger.warn('notification_failed', {
+              kind,
+              channel: channel.name,
+              memberId: member.id,
+              error: err.message,
+            });
+            deliveries.push({
+              memberId: member.id,
+              name: member.name,
+              channel: channel.name,
+              status: 'failed',
+              error: err.message.slice(0, 200),
+            });
           }
         }
       }
@@ -77,7 +101,12 @@ export function createNotifier({ store, channels, logger, now, translator }) {
         // Nothing got through: release the lock so the next run tries again.
         await ledger(pid).delete(id);
       } else {
-        await ledger(pid).update(id, { status: failed ? 'partial' : 'sent', deliveries, sentAt: iso(), subject: build(targets[0]).subject });
+        await ledger(pid).update(id, {
+          status: failed ? 'partial' : 'sent',
+          deliveries,
+          sentAt: iso(),
+          subject: build(targets[0]).subject,
+        });
       }
       return { sent, failed };
     },
@@ -89,7 +118,10 @@ export function createNotifier({ store, channels, logger, now, translator }) {
 
     /** Recent notifications, newest first (for the "who was told what" view). */
     async history(pid, { limit = 50 } = {}) {
-      const items = await ledger(pid).list({ orderBy: { field: 'createdAt', direction: 'desc' }, limit });
+      const items = await ledger(pid).list({
+        orderBy: { field: 'createdAt', direction: 'desc' },
+        limit,
+      });
       return items.filter((n) => n.status !== 'sending');
     },
   };

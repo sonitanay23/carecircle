@@ -73,9 +73,16 @@ export async function api(path, { method = 'GET', body, raw, type, as = 'json' }
 
   let res;
   try {
-    res = await fetch(path, { method, headers, body: raw ?? (body !== undefined ? JSON.stringify(body) : undefined) });
+    res = await fetch(path, {
+      method,
+      headers,
+      body: raw ?? (body !== undefined ? JSON.stringify(body) : undefined),
+    });
   } catch {
-    throw new ApiError('You seem to be offline. Please check your internet connection.', { status: 0, code: 'OFFLINE' });
+    throw new ApiError('You seem to be offline. Please check your internet connection.', {
+      status: 0,
+      code: 'OFFLINE',
+    });
   }
 
   if (res.status === 401 && token) {
@@ -96,7 +103,8 @@ export async function api(path, { method = 'GET', body, raw, type, as = 'json' }
   }
   if (res.status === 204) return null;
   const offline = res.headers.get('x-carecircle-offline') === '1';
-  const data = as === 'blob' ? await res.blob() : as === 'text' ? await res.text() : await res.json();
+  const data =
+    as === 'blob' ? await res.blob() : as === 'text' ? await res.text() : await res.json();
   if (offline && data && typeof data === 'object' && !(data instanceof Blob)) data.__offline = true;
   return data;
 }

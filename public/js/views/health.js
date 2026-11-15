@@ -10,21 +10,65 @@ const TYPES = [
   { value: 'temperature', label: 'Temperature' },
   { value: 'weight', label: 'Weight' },
 ];
-const UNITS = { bp: 'mmHg', sugar: 'mg/dL', pulse: 'beats per minute', spo2: '%', temperature: '°C', weight: 'kg' };
+const UNITS = {
+  bp: 'mmHg',
+  sugar: 'mg/dL',
+  pulse: 'beats per minute',
+  spo2: '%',
+  temperature: '°C',
+  weight: 'kg',
+};
 
 function readingForm(ctx, type) {
   const fields =
     type === 'bp'
       ? [
-          field({ label: 'Upper number (systolic)', name: 'systolic', type: 'number', inputmode: 'numeric', required: true, min: 50, max: 260 }),
-          field({ label: 'Lower number (diastolic)', name: 'diastolic', type: 'number', inputmode: 'numeric', required: true, min: 30, max: 160 }),
+          field({
+            label: 'Upper number (systolic)',
+            name: 'systolic',
+            type: 'number',
+            inputmode: 'numeric',
+            required: true,
+            min: 50,
+            max: 260,
+          }),
+          field({
+            label: 'Lower number (diastolic)',
+            name: 'diastolic',
+            type: 'number',
+            inputmode: 'numeric',
+            required: true,
+            min: 30,
+            max: 160,
+          }),
         ]
       : [
-          field({ label: `Reading (${UNITS[type]})`, name: 'value', type: 'number', inputmode: 'decimal', step: 'any', required: true }),
+          field({
+            label: `Reading (${UNITS[type]})`,
+            name: 'value',
+            type: 'number',
+            inputmode: 'decimal',
+            step: 'any',
+            required: true,
+          }),
           type === 'sugar' &&
-            field({ label: 'When was it taken?', name: 'context', options: [{ value: 'fasting', label: 'Fasting (before food)' }, { value: 'after_meal', label: 'After a meal' }, { value: 'random', label: 'Any other time' }] }),
+            field({
+              label: 'When was it taken?',
+              name: 'context',
+              options: [
+                { value: 'fasting', label: 'Fasting (before food)' },
+                { value: 'after_meal', label: 'After a meal' },
+                { value: 'random', label: 'Any other time' },
+              ],
+            }),
         ];
-  const f = h('form', { class: 'stack' }, ...fields, field({ label: 'Note (optional)', name: 'note' }), h('button', { type: 'submit', class: 'button primary huge' }, 'Save reading'));
+  const f = h(
+    'form',
+    { class: 'stack' },
+    ...fields,
+    field({ label: 'Note (optional)', name: 'note' }),
+    h('button', { type: 'submit', class: 'button primary huge' }, 'Save reading'),
+  );
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     const v = Object.fromEntries(new FormData(f));
@@ -39,7 +83,11 @@ function readingForm(ctx, type) {
     await busy(f.querySelector('button[type=submit]'), async () => {
       try {
         const { reading } = await api('/api/readings', { method: 'POST', body });
-        announce(reading.flag ? `Saved ${reading.display}. This is worth mentioning to your doctor.` : `Saved ${reading.display}.`);
+        announce(
+          reading.flag
+            ? `Saved ${reading.display}. This is worth mentioning to your doctor.`
+            : `Saved ${reading.display}.`,
+        );
         ctx.refresh();
       } catch (err) {
         showError(f, err);
@@ -56,8 +104,14 @@ export async function renderHealth(main, ctx, params) {
   const series =
     type === 'bp'
       ? [
-          { name: 'Upper (systolic)', points: readings.map((r) => ({ t: r.takenAt, y: r.systolic })) },
-          { name: 'Lower (diastolic)', points: readings.map((r) => ({ t: r.takenAt, y: r.diastolic })) },
+          {
+            name: 'Upper (systolic)',
+            points: readings.map((r) => ({ t: r.takenAt, y: r.systolic })),
+          },
+          {
+            name: 'Lower (diastolic)',
+            points: readings.map((r) => ({ t: r.takenAt, y: r.diastolic })),
+          },
         ]
       : [{ name: label, points: readings.map((r) => ({ t: r.takenAt, y: r.value })) }];
   const s = summary[0];
@@ -66,17 +120,41 @@ export async function renderHealth(main, ctx, params) {
   const picker = h(
     'nav',
     { 'aria-label': 'Type of reading' },
-    h('div', { class: 'segmented' }, TYPES.map((t) => h('a', { class: `button ${t.value === type ? 'primary' : 'ghost'} small`, href: `#/health?type=${t.value}`, 'aria-current': t.value === type ? 'page' : undefined }, t.label))),
+    h(
+      'div',
+      { class: 'segmented' },
+      TYPES.map((t) =>
+        h(
+          'a',
+          {
+            class: `button ${t.value === type ? 'primary' : 'ghost'} small`,
+            href: `#/health?type=${t.value}`,
+            'aria-current': t.value === type ? 'page' : undefined,
+          },
+          t.label,
+        ),
+      ),
+    ),
   );
 
-  add(main, 
+  add(
+    main,
     h('h1', { tabindex: '-1' }, 'Health readings'),
-    h('p', { class: 'muted' }, 'Readings are for sharing with your doctor. CareCircle does not interpret them.'),
+    h(
+      'p',
+      { class: 'muted' },
+      'Readings are for sharing with your doctor. CareCircle does not interpret them.',
+    ),
     picker,
     section(
       `${label}, last 30 days`,
       s
-        ? h('p', { class: 'big' }, `${s.count} reading${s.count > 1 ? 's' : ''}. Latest: ${s.latest.display}.`, s.flagged ? ` ${s.flagged} worth mentioning to your doctor.` : '')
+        ? h(
+            'p',
+            { class: 'big' },
+            `${s.count} reading${s.count > 1 ? 's' : ''}. Latest: ${s.latest.display}.`,
+            s.flagged ? ` ${s.flagged} worth mentioning to your doctor.` : '',
+          )
         : null,
       lineChart({ title: label, unit: UNITS[type], series }),
     ),
@@ -91,24 +169,36 @@ export async function renderHealth(main, ctx, params) {
               h(
                 'li',
                 { class: 'row' },
-                h('span', {}, h('strong', {}, r.display), ` · ${dateLabel(r.takenAt, { hour: 'numeric', minute: '2-digit' })}`, r.context ? ` · ${r.context.replace('_', ' ')}` : '', ` · ${r.recordedBy.name}`, r.flag ? h('span', { class: 'badge badge-missed' }, ' Mention to doctor') : null),
+                h(
+                  'span',
+                  {},
+                  h('strong', {}, r.display),
+                  ` · ${dateLabel(r.takenAt, { hour: 'numeric', minute: '2-digit' })}`,
+                  r.context ? ` · ${r.context.replace('_', ' ')}` : '',
+                  ` · ${r.recordedBy.name}`,
+                  r.flag ? h('span', { class: 'badge badge-missed' }, ' Mention to doctor') : null,
+                ),
                 (ctx.me.role === 'elder' || r.recordedBy.id === ctx.me.id) &&
-                  h('button', {
-                    type: 'button',
-                    class: 'button ghost',
-                    'aria-label': `Delete reading ${r.display}`,
-                    onclick: async (e) => {
-                      await busy(e.currentTarget, async () => {
-                        try {
-                          await api(`/api/readings/${r.id}`, { method: 'DELETE' });
-                          announce('Reading deleted.');
-                          ctx.refresh();
-                        } catch (err) {
-                          announce(err.message, { kind: 'error' });
-                        }
-                      });
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      class: 'button ghost',
+                      'aria-label': `Delete reading ${r.display}`,
+                      onclick: async (e) => {
+                        await busy(e.currentTarget, async () => {
+                          try {
+                            await api(`/api/readings/${r.id}`, { method: 'DELETE' });
+                            announce('Reading deleted.');
+                            ctx.refresh();
+                          } catch (err) {
+                            announce(err.message, { kind: 'error' });
+                          }
+                        });
+                      },
                     },
-                  }, 'Delete'),
+                    'Delete',
+                  ),
               ),
             ),
           ),

@@ -3,7 +3,11 @@
  * work without any sign-in or API key and open the user's own Google apps.
  */
 
-const calendarStamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+const calendarStamp = (ms) =>
+  new Date(ms)
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '');
 
 export function googleCalendarUrl({ title, startMs, endMs, details, location }) {
   const params = new URLSearchParams({

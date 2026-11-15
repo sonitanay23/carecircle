@@ -74,7 +74,11 @@ export function createChangeService({ store, activity, profiles, now }) {
     },
 
     async list(pid, { status } = {}) {
-      if (!status) return changes(pid).list({ orderBy: { field: 'createdAt', direction: 'desc' }, limit: 100 });
+      if (!status)
+        return changes(pid).list({
+          orderBy: { field: 'createdAt', direction: 'desc' },
+          limit: 100,
+        });
       // Filter in Firestore, sort here: avoids needing a composite index (status + createdAt).
       const items = await changes(pid).list({ where: [['status', '==', status]] });
       return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100);
@@ -88,14 +92,24 @@ export function createChangeService({ store, activity, profiles, now }) {
 
     async approve(pid, elder, changeId) {
       const change = await api.get(pid, changeId);
-      if (change.status !== 'pending') throw new HttpError(409, 'This change was already handled.', 'NOT_PENDING');
+      if (change.status !== 'pending')
+        throw new HttpError(409, 'This change was already handled.', 'NOT_PENDING');
       let result;
       try {
         result = await apply(pid, change.proposedBy, change);
       } catch (err) {
         if (err instanceof HttpError && err.status < 500) {
-          await changes(pid).update(changeId, { status: 'failed', reviewedBy: elder.id, reviewedAt: iso(), failure: err.message });
-          throw new HttpError(409, `This change can no longer be applied: ${err.message}`, 'APPLY_FAILED');
+          await changes(pid).update(changeId, {
+            status: 'failed',
+            reviewedBy: elder.id,
+            reviewedAt: iso(),
+            failure: err.message,
+          });
+          throw new HttpError(
+            409,
+            `This change can no longer be applied: ${err.message}`,
+            'APPLY_FAILED',
+          );
         }
         throw err;
       }
@@ -116,7 +130,8 @@ export function createChangeService({ store, activity, profiles, now }) {
 
     async reject(pid, elder, changeId, reason) {
       const change = await api.get(pid, changeId);
-      if (change.status !== 'pending') throw new HttpError(409, 'This change was already handled.', 'NOT_PENDING');
+      if (change.status !== 'pending')
+        throw new HttpError(409, 'This change was already handled.', 'NOT_PENDING');
       const updated = await changes(pid).update(changeId, {
         status: 'rejected',
         reviewedBy: elder.id,
@@ -135,9 +150,14 @@ export function createChangeService({ store, activity, profiles, now }) {
     /** The person who suggested a change can withdraw it while it is pending. */
     async withdraw(pid, member, changeId) {
       const change = await api.get(pid, changeId);
-      if (change.proposedBy.id !== member.id) throw new HttpError(403, 'You can only withdraw your own suggestions.', 'FORBIDDEN');
-      if (change.status !== 'pending') throw new HttpError(409, 'This change was already handled.', 'NOT_PENDING');
-      const updated = await changes(pid).update(changeId, { status: 'withdrawn', reviewedAt: iso() });
+      if (change.proposedBy.id !== member.id)
+        throw new HttpError(403, 'You can only withdraw your own suggestions.', 'FORBIDDEN');
+      if (change.status !== 'pending')
+        throw new HttpError(409, 'This change was already handled.', 'NOT_PENDING');
+      const updated = await changes(pid).update(changeId, {
+        status: 'withdrawn',
+        reviewedAt: iso(),
+      });
       await activity.record(pid, member, {
         action: 'change.withdrawn',
         summary: `${member.name} withdrew their suggestion: ${change.summary}`,

@@ -4,7 +4,10 @@ import { createMemoryStore } from './memoryStore.js';
 export async function createStore(config) {
   if (config.store === 'firestore') {
     const { createFirestoreStore } = await import('./firestoreStore.js');
-    return createFirestoreStore({ projectId: config.gcpProject, databaseId: config.firestoreDatabase });
+    return createFirestoreStore({
+      projectId: config.gcpProject,
+      databaseId: config.firestoreDatabase,
+    });
   }
   return createMemoryStore();
 }

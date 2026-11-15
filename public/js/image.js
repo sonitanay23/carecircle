@@ -13,7 +13,9 @@ function loadImage(file) {
     img.onload = () => resolve({ img, url });
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error('This photo could not be opened. Please take the photo again with the camera.'));
+      reject(
+        new Error('This photo could not be opened. Please take the photo again with the camera.'),
+      );
     };
     img.src = url;
   });

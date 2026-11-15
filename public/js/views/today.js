@@ -38,7 +38,11 @@ function photoFor(medicationId, hasPhoto, name) {
 
 async function askQuestion(ctx) {
   const lang = ctx.me.language ?? 'en';
-  const input = field({ label: 'Your question', name: 'q', hint: 'For example: "Did I take my BP tablet today?"' });
+  const input = field({
+    label: 'Your question',
+    name: 'q',
+    hint: 'For example: "Did I take my BP tablet today?"',
+  });
   const answer = h('p', { class: 'answer', role: 'status', 'aria-live': 'polite' });
   const run = async (question) => {
     if (!question.trim()) return;
@@ -52,29 +56,50 @@ async function askQuestion(ctx) {
     }
   };
   const mic = canListen()
-    ? h('button', {
-        type: 'button',
-        class: 'button primary huge',
-        onclick: (e) =>
-          busy(e.currentTarget, async () => {
-            try {
-              answer.textContent = 'Listening… please speak now.';
-              const heard = await listen(lang);
-              input.control.value = heard;
-              await run(heard);
-            } catch (err) {
-              answer.textContent = err.message;
-            }
-          }),
-      }, icon('mic'), 'Tap and speak')
+    ? h(
+        'button',
+        {
+          type: 'button',
+          class: 'button primary huge',
+          onclick: (e) =>
+            busy(e.currentTarget, async () => {
+              try {
+                answer.textContent = 'Listening… please speak now.';
+                const heard = await listen(lang);
+                input.control.value = heard;
+                await run(heard);
+              } catch (err) {
+                answer.textContent = err.message;
+              }
+            }),
+        },
+        icon('mic'),
+        'Tap and speak',
+      )
     : null;
   const form = h(
     'form',
-    { class: 'stack', onsubmit: (e) => { e.preventDefault(); run(input.control.value); } },
+    {
+      class: 'stack',
+      onsubmit: (e) => {
+        e.preventDefault();
+        run(input.control.value);
+      },
+    },
     input,
     h('button', { type: 'submit', class: 'button secondary block' }, 'Ask'),
   );
-  await dialog({ title: 'Ask a question', body: h('div', { class: 'stack' }, mic, mic && h('p', { class: 'muted' }, 'Or type it:'), form, answer) });
+  await dialog({
+    title: 'Ask a question',
+    body: h(
+      'div',
+      { class: 'stack' },
+      mic,
+      mic && h('p', { class: 'muted' }, 'Or type it:'),
+      form,
+      answer,
+    ),
+  });
 }
 
 export async function renderToday(main, ctx) {
@@ -82,7 +107,9 @@ export async function renderToday(main, ctx) {
     api('/api/doses/today'),
     api('/api/adherence?days=7').catch(() => null),
     api('/api/medications').catch(() => ({ medications: [] })),
-    ctx.me.role === 'elder' ? api('/api/changes?status=pending').catch(() => ({ changes: [] })) : { changes: [] },
+    ctx.me.role === 'elder'
+      ? api('/api/changes?status=pending').catch(() => ({ changes: [] }))
+      : { changes: [] },
   ]);
   const isElder = ctx.me.role === 'elder';
   const first = ctx.profile.elderName.split(' ')[0];
@@ -91,13 +118,22 @@ export async function renderToday(main, ctx) {
   const hasPhoto = new Set(meds.medications.filter((m) => m.hasPhoto).map((m) => m.id));
   const viewerTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const yourTime = (d) =>
-    viewerTz !== today.timezone ? ` (${new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(d.scheduledAt))} your time)` : '';
+    viewerTz !== today.timezone
+      ? ` (${new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(d.scheduledAt))} your time)`
+      : '';
 
   const record = (d, status, button) =>
     busy(button, async () => {
       try {
-        await api('/api/doses', { method: 'POST', body: { medicationId: d.medicationId, date: d.date, time: d.time, status } });
-        announce(status === 'taken' ? `Well done. ${d.name} is marked as taken.` : `${d.name} marked as ${status === 'skipped' ? 'not taken' : status}.`);
+        await api('/api/doses', {
+          method: 'POST',
+          body: { medicationId: d.medicationId, date: d.date, time: d.time, status },
+        });
+        announce(
+          status === 'taken'
+            ? `Well done. ${d.name} is marked as taken.`
+            : `${d.name} marked as ${status === 'skipped' ? 'not taken' : status}.`,
+        );
         ctx.refresh();
       } catch (err) {
         announce(err.message, { kind: 'error' });
@@ -107,10 +143,36 @@ export async function renderToday(main, ctx) {
   add(
     main,
     h('h1', { tabindex: '-1' }, isElder ? `${greeting()}, ${first}` : `${first}'s medicines today`),
-    h('p', { class: 'date-line' }, new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())),
-    today.__offline ? h('div', { class: 'banner warn', role: 'status' }, icon('warning'), h('p', {}, 'No internet right now. This is the list saved on your phone.')) : null,
+    h(
+      'p',
+      { class: 'date-line' },
+      new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(
+        new Date(),
+      ),
+    ),
+    today.__offline
+      ? h(
+          'div',
+          { class: 'banner warn', role: 'status' },
+          icon('warning'),
+          h('p', {}, 'No internet right now. This is the list saved on your phone.'),
+        )
+      : null,
     pending.changes.length
-      ? h('div', { class: 'banner info' }, icon('bell'), h('p', {}, h('a', { href: '#/circle' }, `Your family suggested ${pending.changes.length} change${pending.changes.length > 1 ? 's' : ''}. Tap to check.`)))
+      ? h(
+          'div',
+          { class: 'banner info' },
+          icon('bell'),
+          h(
+            'p',
+            {},
+            h(
+              'a',
+              { href: '#/circle' },
+              `Your family suggested ${pending.changes.length} change${pending.changes.length > 1 ? 's' : ''}. Tap to check.`,
+            ),
+          ),
+        )
       : null,
   );
 
@@ -129,14 +191,21 @@ export async function renderToday(main, ctx) {
         h('span', { class: 'pill-icon', style: 'margin: 0 auto' }, icon('pill')),
         h('h2', { id: 'hero-h' }, 'No medicines added yet'),
         h('p', { class: 'big' }, 'Add your medicines and CareCircle will remind you.'),
-        h('a', { class: 'button primary huge', href: '#/medicines' }, icon('plus'), 'Add medicines'),
+        h(
+          'a',
+          { class: 'button primary huge', href: '#/medicines' },
+          icon('plus'),
+          'Add medicines',
+        ),
       ),
     );
   } else if (next) {
     const state = next.status === 'due' ? 'is-due' : next.status === 'missed' ? 'is-missed' : '';
     const label =
       next.status === 'due'
-        ? isElder ? 'Time for your medicine' : `Time for ${first}'s medicine`
+        ? isElder
+          ? 'Time for your medicine'
+          : `Time for ${first}'s medicine`
         : next.status === 'missed'
           ? `Not taken yet · was due at ${timeLabel(next.time)}`
           : `Next medicine · ${inHowLong(next.scheduledAt)}`;
@@ -145,7 +214,12 @@ export async function renderToday(main, ctx) {
       h(
         'section',
         { class: `hero ${state}`, 'aria-labelledby': 'hero-h' },
-        h('p', { class: 'hero-label' }, icon(next.status === 'missed' ? 'warning' : 'clock'), label),
+        h(
+          'p',
+          { class: 'hero-label' },
+          icon(next.status === 'missed' ? 'warning' : 'clock'),
+          label,
+        ),
         h(
           'div',
           { class: 'hero-med' },
@@ -153,18 +227,41 @@ export async function renderToday(main, ctx) {
           h(
             'div',
             {},
-            h('h2', { id: 'hero-h', class: 'hero-name' }, next.name, next.dose ? ` ${next.dose}` : ''),
-            next.status === 'missed' ? null : h('p', { class: 'hero-time' }, timeLabel(next.time), yourTime(next)),
+            h(
+              'h2',
+              { id: 'hero-h', class: 'hero-name' },
+              next.name,
+              next.dose ? ` ${next.dose}` : '',
+            ),
+            next.status === 'missed'
+              ? null
+              : h('p', { class: 'hero-time' }, timeLabel(next.time), yourTime(next)),
             next.instructions ? h('p', { class: 'hero-note' }, next.instructions) : null,
           ),
         ),
-        h('button', {
-          type: 'button',
-          class: 'button primary huge',
-          onclick: (e) => record(next, 'taken', e.currentTarget),
-        }, icon('check', { size: 28 }), isElder ? "I've taken it" : 'Mark as taken'),
-        h('div', { class: 'button-row', style: 'justify-content:center;margin-bottom:0' },
-          h('button', { type: 'button', class: 'button quiet', onclick: (e) => record(next, 'skipped', e.currentTarget) }, 'Skip this dose')),
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'button primary huge',
+            onclick: (e) => record(next, 'taken', e.currentTarget),
+          },
+          icon('check', { size: 28 }),
+          isElder ? "I've taken it" : 'Mark as taken',
+        ),
+        h(
+          'div',
+          { class: 'button-row', style: 'justify-content:center;margin-bottom:0' },
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'button quiet',
+              onclick: (e) => record(next, 'skipped', e.currentTarget),
+            },
+            'Skip this dose',
+          ),
+        ),
       ),
     );
   } else {
@@ -175,7 +272,15 @@ export async function renderToday(main, ctx) {
         { class: 'hero hero-done', 'aria-labelledby': 'hero-h' },
         icon('check'),
         h('h2', { id: 'hero-h' }, doses.length ? 'All done for today' : 'Nothing to take today'),
-        h('p', { class: 'big' }, doses.length ? (isElder ? 'Well done! Every medicine is taken.' : `${first} has taken every medicine today.`) : 'No medicines are scheduled for today.'),
+        h(
+          'p',
+          { class: 'big' },
+          doses.length
+            ? isElder
+              ? 'Well done! Every medicine is taken.'
+              : `${first} has taken every medicine today.`
+            : 'No medicines are scheduled for today.',
+        ),
       ),
     );
   }
@@ -189,8 +294,23 @@ export async function renderToday(main, ctx) {
       h(
         'div',
         { class: 'progress' },
-        h('p', { class: 'progress-text', id: 'progress-label' }, `${taken} of ${doses.length} taken today${streak}`),
-        h('div', { class: 'progress-bar', role: 'progressbar', 'aria-labelledby': 'progress-label', 'aria-valuemin': '0', 'aria-valuemax': String(doses.length), 'aria-valuenow': String(taken) }, h('span', { style: `width:${pct}%` })),
+        h(
+          'p',
+          { class: 'progress-text', id: 'progress-label' },
+          `${taken} of ${doses.length} taken today${streak}`,
+        ),
+        h(
+          'div',
+          {
+            class: 'progress-bar',
+            role: 'progressbar',
+            'aria-labelledby': 'progress-label',
+            'aria-valuemin': '0',
+            'aria-valuemax': String(doses.length),
+            'aria-valuenow': String(taken),
+          },
+          h('span', { style: `width:${pct}%` }),
+        ),
       ),
     );
   }
@@ -215,19 +335,56 @@ export async function renderToday(main, ctx) {
           { class: 'plain-list' },
           items.map((d) => {
             const st = STATUS[d.status];
-            const who = d.record && d.record.recordedBy.id !== 'system' && d.record.recordedBy.id !== ctx.me.id ? ` · by ${d.record.recordedBy.name}` : '';
+            const who =
+              d.record &&
+              d.record.recordedBy.id !== 'system' &&
+              d.record.recordedBy.id !== ctx.me.id
+                ? ` · by ${d.record.recordedBy.name}`
+                : '';
             return h(
               'li',
               { class: `dose-row status-${d.status}` },
               h('p', { class: 'name' }, d.name, d.dose ? ` ${d.dose}` : ''),
-              h('p', { class: 'meta' }, timeLabel(d.time), yourTime(d), d.instructions ? ` · ${d.instructions}` : ''),
+              h(
+                'p',
+                { class: 'meta' },
+                timeLabel(d.time),
+                yourTime(d),
+                d.instructions ? ` · ${d.instructions}` : '',
+              ),
               h(
                 'div',
                 { class: 'actions' },
-                h('span', { class: `pill ${st.className}` }, h('span', { 'aria-hidden': 'true' }, st.mark), st.label, d.record?.late ? ' (late)' : '', who),
+                h(
+                  'span',
+                  { class: `pill ${st.className}` },
+                  h('span', { 'aria-hidden': 'true' }, st.mark),
+                  st.label,
+                  d.record?.late ? ' (late)' : '',
+                  who,
+                ),
                 d.status === 'taken'
-                  ? h('button', { type: 'button', class: 'button quiet small', onclick: (e) => record(d, 'skipped', e.currentTarget), 'aria-label': `Change ${d.name} at ${timeLabel(d.time)} to not taken` }, 'Undo')
-                  : h('button', { type: 'button', class: 'button secondary small', onclick: (e) => record(d, 'taken', e.currentTarget), 'aria-label': `Mark ${d.name} at ${timeLabel(d.time)} as taken` }, icon('check', { size: 20 }), 'Taken'),
+                  ? h(
+                      'button',
+                      {
+                        type: 'button',
+                        class: 'button quiet small',
+                        onclick: (e) => record(d, 'skipped', e.currentTarget),
+                        'aria-label': `Change ${d.name} at ${timeLabel(d.time)} to not taken`,
+                      },
+                      'Undo',
+                    )
+                  : h(
+                      'button',
+                      {
+                        type: 'button',
+                        class: 'button secondary small',
+                        onclick: (e) => record(d, 'taken', e.currentTarget),
+                        'aria-label': `Mark ${d.name} at ${timeLabel(d.time)} as taken`,
+                      },
+                      icon('check', { size: 20 }),
+                      'Taken',
+                    ),
               ),
             );
           }),
@@ -253,21 +410,42 @@ export async function renderToday(main, ctx) {
             return h(
               'li',
               { class: 'row' },
-              h('div', {}, h('p', { class: 'name', style: 'font-weight:800;margin:0' }, m.name, m.dose ? ` ${m.dose}` : ''), h('p', { class: 'muted', style: 'margin:0' }, count ? `Taken ${count} time${count > 1 ? 's' : ''} today` : 'Not taken today')),
-              h('button', {
-                type: 'button',
-                class: 'button secondary small',
-                onclick: (e) =>
-                  busy(e.currentTarget, async () => {
-                    try {
-                      await api('/api/doses', { method: 'POST', body: { medicationId: m.id, status: 'taken' } });
-                      announce(`Noted: you took ${m.name}.`);
-                      ctx.refresh();
-                    } catch (err) {
-                      announce(err.message, { kind: 'error' });
-                    }
-                  }),
-              }, 'I took one'),
+              h(
+                'div',
+                {},
+                h(
+                  'p',
+                  { class: 'name', style: 'font-weight:800;margin:0' },
+                  m.name,
+                  m.dose ? ` ${m.dose}` : '',
+                ),
+                h(
+                  'p',
+                  { class: 'muted', style: 'margin:0' },
+                  count ? `Taken ${count} time${count > 1 ? 's' : ''} today` : 'Not taken today',
+                ),
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'button secondary small',
+                  onclick: (e) =>
+                    busy(e.currentTarget, async () => {
+                      try {
+                        await api('/api/doses', {
+                          method: 'POST',
+                          body: { medicationId: m.id, status: 'taken' },
+                        });
+                        announce(`Noted: you took ${m.name}.`);
+                        ctx.refresh();
+                      } catch (err) {
+                        announce(err.message, { kind: 'error' });
+                      }
+                    }),
+                },
+                'I took one',
+              ),
             );
           }),
         ),
@@ -282,18 +460,36 @@ export async function renderToday(main, ctx) {
       h(
         'div',
         { class: 'quick-actions' },
-        h('button', {
-          type: 'button',
-          class: 'button secondary',
-          onclick: (e) => {
-            const left = doses.filter((d) => d.status === 'due' || d.status === 'upcoming' || d.status === 'missed');
-            const text = left.length
-              ? `You have taken ${taken} of ${doses.length} medicines today. Still to take: ${left.map((d) => `${d.name} at ${timeLabel(d.time)}`).join(', ')}.`
-              : `You have taken all ${doses.length} medicines today. Well done.`;
-            busy(e.currentTarget, () => speak(text, ctx.me.language).catch((err) => announce(err.message, { kind: 'error' })));
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'button secondary',
+            onclick: (e) => {
+              const left = doses.filter(
+                (d) => d.status === 'due' || d.status === 'upcoming' || d.status === 'missed',
+              );
+              const text = left.length
+                ? `You have taken ${taken} of ${doses.length} medicines today. Still to take: ${left.map((d) => `${d.name} at ${timeLabel(d.time)}`).join(', ')}.`
+                : `You have taken all ${doses.length} medicines today. Well done.`;
+              busy(e.currentTarget, () =>
+                speak(text, ctx.me.language).catch((err) =>
+                  announce(err.message, { kind: 'error' }),
+                ),
+              );
+            },
           },
-        }, icon('speaker'), 'Read my day aloud'),
-        ctx.ai.gemini ? h('button', { type: 'button', class: 'button secondary', onclick: () => askQuestion(ctx) }, icon('mic'), 'Ask a question') : null,
+          icon('speaker'),
+          'Read my day aloud',
+        ),
+        ctx.ai.gemini
+          ? h(
+              'button',
+              { type: 'button', class: 'button secondary', onclick: () => askQuestion(ctx) },
+              icon('mic'),
+              'Ask a question',
+            )
+          : null,
       ),
     );
   }

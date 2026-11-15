@@ -74,7 +74,9 @@ export function createApp({ config, logger, services }) {
 
   // Invite links (/join?profile=ABCD-EFGH) open the app's join screen.
   app.get('/join', (req, res) => {
-    const code = String(req.query.profile ?? '').replace(/[^0-9A-Za-z-]/g, '').slice(0, 12);
+    const code = String(req.query.profile ?? '')
+      .replace(/[^0-9A-Za-z-]/g, '')
+      .slice(0, 12);
     res.redirect(302, `/#/join${code ? `?profile=${code}` : ''}`);
   });
   // Public emergency card opened from the medical ID QR code.

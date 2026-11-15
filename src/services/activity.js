@@ -27,7 +27,9 @@ export function createActivityService({ store, now }) {
         summary,
         entity: entity ?? null,
         entityId: entityId ?? null,
-        actor: actor ? { id: actor.id, name: actor.name, role: actor.role } : { id: 'system', name: 'CareCircle', role: 'system' },
+        actor: actor
+          ? { id: actor.id, name: actor.name, role: actor.role }
+          : { id: 'system', name: 'CareCircle', role: 'system' },
       });
     },
 

@@ -28,12 +28,22 @@ const server = app.listen(config.port, (err) => {
     logger.error('server_failed_to_start', {
       port: config.port,
       err,
-      hint: err.code === 'EADDRINUSE' ? `Port ${config.port} is already in use. Stop the other server (lsof -ti :${config.port} | xargs kill) or set PORT.` : undefined,
+      hint:
+        err.code === 'EADDRINUSE'
+          ? `Port ${config.port} is already in use. Stop the other server (lsof -ti :${config.port} | xargs kill) or set PORT.`
+          : undefined,
     });
     process.exit(1);
   }
-  logger.info('server_started', { port: config.port, env: config.nodeEnv, store: store.kind, mail: config.mail.transport,
-    gemini: Boolean(ai.gemini), translation: Boolean(ai.translator), speech: Boolean(ai.speech) });
+  logger.info('server_started', {
+    port: config.port,
+    env: config.nodeEnv,
+    store: store.kind,
+    mail: config.mail.transport,
+    gemini: Boolean(ai.gemini),
+    translation: Boolean(ai.translator),
+    speech: Boolean(ai.speech),
+  });
 });
 
 // Cloud Run sends SIGTERM before stopping an instance; finish in-flight requests.
@@ -45,5 +55,7 @@ const shutdown = (signal) => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 process.on('unhandledRejection', (reason) => {
-  logger.error('unhandled_rejection', { err: reason instanceof Error ? reason : new Error(String(reason)) });
+  logger.error('unhandled_rejection', {
+    err: reason instanceof Error ? reason : new Error(String(reason)),
+  });
 });

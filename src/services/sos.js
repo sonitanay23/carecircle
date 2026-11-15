@@ -22,15 +22,32 @@ export function createSosService({ profiles, notifier, activity, config, now }) 
       const recipients = members.filter((m) => m.status === 'active' && m.id !== sender.id);
       const sentAt = now();
       const place = location
-        ? { ...location, mapUrl: googleMapsSearchUrl(`${location.latitude.toFixed(6)},${location.longitude.toFixed(6)}`) }
+        ? {
+            ...location,
+            mapUrl: googleMapsSearchUrl(
+              `${location.latitude.toFixed(6)},${location.longitude.toFixed(6)}`,
+            ),
+          }
         : null;
 
       const result = await notifier.send(pid, {
         id: `sos_${sender.id}_${Math.floor(sentAt / MINUTE)}`,
         kind: 'sos',
-        ref: { memberId: sender.id, location: place ? { latitude: place.latitude, longitude: place.longitude } : null },
+        ref: {
+          memberId: sender.id,
+          location: place ? { latitude: place.latitude, longitude: place.longitude } : null,
+        },
         recipients,
-        build: (recipient) => messages.sos({ recipient, sender, elder, location: place, note, sentAt, appUrl: config.appBaseUrl }),
+        build: (recipient) =>
+          messages.sos({
+            recipient,
+            sender,
+            elder,
+            location: place,
+            note,
+            sentAt,
+            appUrl: config.appBaseUrl,
+          }),
       });
 
       if (result.skipped) return { status: 'already_sent', sent: 0, failed: 0 };
@@ -42,7 +59,11 @@ export function createSosService({ profiles, notifier, activity, config, now }) 
         );
       }
       if (!result.sent) {
-        throw new HttpError(502, 'The SOS alert could not be sent. If this is an emergency, call your local emergency number now.', 'SEND_FAILED');
+        throw new HttpError(
+          502,
+          'The SOS alert could not be sent. If this is an emergency, call your local emergency number now.',
+          'SEND_FAILED',
+        );
       }
 
       await activity.record(pid, sender, {

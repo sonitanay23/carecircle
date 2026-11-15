@@ -32,11 +32,17 @@ test('replacing or turning off the link stops old QR codes working', async () =>
   const first = (await services.medicalId.enableSharing(pid, elder)).sharing.url.split('/').pop();
   const second = (await services.medicalId.enableSharing(pid, elder)).sharing.url.split('/').pop();
   assert.notEqual(first, second);
-  await assert.rejects(services.medicalId.publicView(first, services.profiles), (e) => e.status === 404);
+  await assert.rejects(
+    services.medicalId.publicView(first, services.profiles),
+    (e) => e.status === 404,
+  );
   await services.medicalId.publicView(second, services.profiles);
 
   await services.medicalId.disableSharing(pid, elder);
-  await assert.rejects(services.medicalId.publicView(second, services.profiles), (e) => e.status === 404);
+  await assert.rejects(
+    services.medicalId.publicView(second, services.profiles),
+    (e) => e.status === 404,
+  );
 });
 
 test('views are logged at most once an hour', async () => {
@@ -53,6 +59,12 @@ test('views are logged at most once an hour', async () => {
 
 test('garbage tokens are rejected without a lookup', async () => {
   const { services } = buildTestServices();
-  await assert.rejects(services.medicalId.publicView('short', services.profiles), (e) => e.status === 404);
-  await assert.rejects(services.medicalId.publicView('x'.repeat(200), services.profiles), (e) => e.status === 404);
+  await assert.rejects(
+    services.medicalId.publicView('short', services.profiles),
+    (e) => e.status === 404,
+  );
+  await assert.rejects(
+    services.medicalId.publicView('x'.repeat(200), services.profiles),
+    (e) => e.status === 404,
+  );
 });

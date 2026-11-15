@@ -15,7 +15,8 @@ export function isScheduledOn(med, date) {
   return true;
 }
 
-export const doseKey = (medicationId, date, time) => `${medicationId}_${date}_${time.replace(':', '')}`;
+export const doseKey = (medicationId, date, time) =>
+  `${medicationId}_${date}_${time.replace(':', '')}`;
 
 /** Scheduled doses for one medication on one local date. */
 export function dosesOn(med, date, timeZone) {

@@ -18,9 +18,20 @@ export function createClock(start = Date.parse('2026-11-15T09:00:00Z')) {
 export const silentLogger = () => createLogger({ level: 'error', sink: () => {} });
 
 export function buildTestServices({ clock = createClock(), env = {}, channels, ai } = {}) {
-  const config = loadConfig({ APP_BASE_URL: 'https://care.example', CRON_SECRET: 'test-cron-secret-0123456789', ...env });
+  const config = loadConfig({
+    APP_BASE_URL: 'https://care.example',
+    CRON_SECRET: 'test-cron-secret-0123456789',
+    ...env,
+  });
   const email = createMemoryEmailChannel();
-  const services = buildServices({ store: createMemoryStore(), config, logger: silentLogger(), now: clock.now, channels: channels ?? { email }, ai });
+  const services = buildServices({
+    store: createMemoryStore(),
+    config,
+    logger: silentLogger(),
+    now: clock.now,
+    channels: channels ?? { email },
+    ai,
+  });
   return { services, config, clock, email };
 }
 
@@ -36,7 +47,10 @@ export const elderInput = (overrides = {}) => ({
 /** Creates a profile with an elder and one joined family member. */
 export async function seedFamily(services) {
   const { profile, member: elder } = await services.profiles.createProfile(elderInput());
-  const { inviteCode } = await services.profiles.invite(profile.id, elder, { name: 'Riya', role: 'family' });
+  const { inviteCode } = await services.profiles.invite(profile.id, elder, {
+    name: 'Riya',
+    role: 'family',
+  });
   const { member: family } = await services.profiles.join({
     profileCode: profile.id,
     inviteCode,

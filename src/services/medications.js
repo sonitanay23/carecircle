@@ -4,8 +4,21 @@ import { newId } from '../lib/ids.js';
 import { localDate } from '../lib/time.js';
 import { supplyStatus } from '../lib/schedule.js';
 
-export const MEDICATION_FORMS = Object.freeze(['tablet', 'capsule', 'liquid', 'injection', 'inhaler', 'drops', 'cream', 'other']);
-export const PHOTO_TYPES = Object.freeze({ 'image/jpeg': [0xff, 0xd8, 0xff], 'image/png': [0x89, 0x50, 0x4e, 0x47], 'image/webp': [0x52, 0x49, 0x46, 0x46] });
+export const MEDICATION_FORMS = Object.freeze([
+  'tablet',
+  'capsule',
+  'liquid',
+  'injection',
+  'inhaler',
+  'drops',
+  'cream',
+  'other',
+]);
+export const PHOTO_TYPES = Object.freeze({
+  'image/jpeg': [0xff, 0xd8, 0xff],
+  'image/png': [0x89, 0x50, 0x4e, 0x47],
+  'image/webp': [0x52, 0x49, 0x46, 0x46],
+});
 export const MAX_PHOTO_BYTES = 512 * 1024;
 
 const describe = (m) => `${m.name}${m.dose ? ` ${m.dose}` : ''}`;
@@ -39,7 +52,11 @@ export function createMedicationService({ store, activity, changes, profiles, no
 
   const assertValidSchedule = (data) => {
     if (!data.asNeeded && !data.schedule?.times?.length) {
-      throw new HttpError(400, 'Add at least one time, or mark the medicine as "when needed".', 'VALIDATION');
+      throw new HttpError(
+        400,
+        'Add at least one time, or mark the medicine as "when needed".',
+        'VALIDATION',
+      );
     }
     if (data.schedule?.endDate && data.schedule.endDate < data.schedule.startDate) {
       throw new HttpError(400, 'The end date cannot be before the start date.', 'VALIDATION');
@@ -49,18 +66,29 @@ export function createMedicationService({ store, activity, changes, profiles, no
   changes.registerApplier('medication', async (pid, _actor, change) => {
     if (change.action === 'create') {
       const id = newId();
-      await meds(pid).create(id, { ...change.data, status: 'active', stoppedOn: null, createdAt: iso(), updatedAt: iso() });
+      await meds(pid).create(id, {
+        ...change.data,
+        status: 'active',
+        stoppedOn: null,
+        createdAt: iso(),
+        updatedAt: iso(),
+      });
       return { entityId: id };
     }
     const current = await getOrThrow(pid, change.targetId);
-    if (current.status !== 'active') throw new HttpError(409, 'This medicine has already been stopped.', 'STOPPED');
+    if (current.status !== 'active')
+      throw new HttpError(409, 'This medicine has already been stopped.', 'STOPPED');
     if (change.action === 'update') {
       const next = { ...current, ...change.data, updatedAt: iso() };
       assertValidSchedule(next);
       await meds(pid).set(current.id, next);
     } else if (change.action === 'stop') {
       const profile = await profiles.getProfile(pid);
-      await meds(pid).update(current.id, { status: 'stopped', stoppedOn: localDate(now(), profile.timezone), updatedAt: iso() });
+      await meds(pid).update(current.id, {
+        status: 'stopped',
+        stoppedOn: localDate(now(), profile.timezone),
+        updatedAt: iso(),
+      });
     }
     return { entityId: current.id };
   });
@@ -76,7 +104,9 @@ export function createMedicationService({ store, activity, changes, profiles, no
     async list(pid, { includeStopped = false } = {}) {
       const all = await meds(pid).list({ orderBy: { field: 'name', direction: 'asc' } });
       const photoIds = new Set((await photos(pid).list()).map((p) => p.id));
-      return all.filter((m) => includeStopped || m.status === 'active').map((m) => view(m, photoIds));
+      return all
+        .filter((m) => includeStopped || m.status === 'active')
+        .map((m) => view(m, photoIds));
     },
 
     async get(pid, id) {
@@ -95,7 +125,11 @@ export function createMedicationService({ store, activity, changes, profiles, no
     getRaw: (pid, id) => meds(pid).get(id),
 
     async proposeCreate(pid, actor, data) {
-      const clean = { ...data, asNeeded: Boolean(data.asNeeded), schedule: data.asNeeded ? null : cleanSchedule(data.schedule) };
+      const clean = {
+        ...data,
+        asNeeded: Boolean(data.asNeeded),
+        schedule: data.asNeeded ? null : cleanSchedule(data.schedule),
+      };
       assertValidSchedule(clean);
       return changes.propose(pid, actor, {
         entity: 'medication',
@@ -107,7 +141,8 @@ export function createMedicationService({ store, activity, changes, profiles, no
 
     async proposeUpdate(pid, actor, id, patch) {
       const current = await getOrThrow(pid, id);
-      if (current.status !== 'active') throw new HttpError(409, 'This medicine has already been stopped.', 'STOPPED');
+      if (current.status !== 'active')
+        throw new HttpError(409, 'This medicine has already been stopped.', 'STOPPED');
       const data = { ...patch };
       if (data.schedule) data.schedule = cleanSchedule(data.schedule);
       if (data.asNeeded === true) data.schedule = null;
@@ -125,7 +160,8 @@ export function createMedicationService({ store, activity, changes, profiles, no
 
     async proposeStop(pid, actor, id) {
       const current = await getOrThrow(pid, id);
-      if (current.status !== 'active') throw new HttpError(409, 'This medicine has already been stopped.', 'STOPPED');
+      if (current.status !== 'active')
+        throw new HttpError(409, 'This medicine has already been stopped.', 'STOPPED');
       return changes.propose(pid, actor, {
         entity: 'medication',
         action: 'stop',
@@ -139,7 +175,14 @@ export function createMedicationService({ store, activity, changes, profiles, no
       const med = await getOrThrow(pid, id);
       const count = (med.stock?.count ?? 0) + added;
       const updated = await meds(pid).update(id, {
-        stock: { perDose: 1, lowAtDays: 5, ...(med.stock ?? {}), count, lowNotifiedAt: null, refills: (med.stock?.refills ?? 0) + 1 },
+        stock: {
+          perDose: 1,
+          lowAtDays: 5,
+          ...(med.stock ?? {}),
+          count,
+          lowNotifiedAt: null,
+          refills: (med.stock?.refills ?? 0) + 1,
+        },
         updatedAt: iso(),
       });
       await activity.record(pid, actor, {
@@ -166,14 +209,26 @@ export function createMedicationService({ store, activity, changes, profiles, no
     async setPhoto(pid, actor, id, contentType, buffer) {
       const med = await getOrThrow(pid, id);
       const signature = PHOTO_TYPES[contentType];
-      if (!signature) throw new HttpError(415, 'Photos must be JPEG, PNG or WebP.', 'UNSUPPORTED_MEDIA');
-      if (!Buffer.isBuffer(buffer) || buffer.length === 0) throw new HttpError(400, 'The photo is empty.', 'VALIDATION');
-      if (buffer.length > MAX_PHOTO_BYTES) throw new HttpError(413, 'The photo is too large (max 512 KB).', 'TOO_LARGE');
+      if (!signature)
+        throw new HttpError(415, 'Photos must be JPEG, PNG or WebP.', 'UNSUPPORTED_MEDIA');
+      if (!Buffer.isBuffer(buffer) || buffer.length === 0)
+        throw new HttpError(400, 'The photo is empty.', 'VALIDATION');
+      if (buffer.length > MAX_PHOTO_BYTES)
+        throw new HttpError(413, 'The photo is too large (max 512 KB).', 'TOO_LARGE');
       // Check the file really is the image type it claims to be.
       if (!signature.every((byte, i) => buffer[i] === byte)) {
-        throw new HttpError(415, 'That file does not look like a valid image.', 'UNSUPPORTED_MEDIA');
+        throw new HttpError(
+          415,
+          'That file does not look like a valid image.',
+          'UNSUPPORTED_MEDIA',
+        );
       }
-      await photos(pid).set(id, { contentType, data: buffer.toString('base64'), bytes: buffer.length, updatedAt: iso() });
+      await photos(pid).set(id, {
+        contentType,
+        data: buffer.toString('base64'),
+        bytes: buffer.length,
+        updatedAt: iso(),
+      });
       await activity.record(pid, actor, {
         action: 'medication.photo',
         summary: `${actor.name} added a photo of ${describe(med)}.`,
@@ -185,7 +240,11 @@ export function createMedicationService({ store, activity, changes, profiles, no
     async getPhoto(pid, id) {
       const photo = await photos(pid).get(id);
       if (!photo) throw new HttpError(404, 'No photo for this medicine yet.', 'NOT_FOUND');
-      return { contentType: photo.contentType, buffer: Buffer.from(photo.data, 'base64'), updatedAt: photo.updatedAt };
+      return {
+        contentType: photo.contentType,
+        buffer: Buffer.from(photo.data, 'base64'),
+        updatedAt: photo.updatedAt,
+      };
     },
 
     async deletePhoto(pid, actor, id) {

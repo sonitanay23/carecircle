@@ -6,7 +6,10 @@
 import { formatForPerson } from '../lib/time.js';
 
 const esc = (s) =>
-  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  String(s ?? '').replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
 
 const medLabel = (m) => `${m.name}${m.dose ? ` ${m.dose}` : ''}`;
 const firstName = (name) => String(name).split(' ')[0];
@@ -18,7 +21,8 @@ function whenFor(recipient, ms, elder) {
   return `${mine} your time (${formatForPerson(ms, elder.timezone)} for ${firstName(elder.name)})`;
 }
 
-export const DISCLAIMER = 'CareCircle does not give medical advice. If you are unsure, ask your doctor or pharmacist.';
+export const DISCLAIMER =
+  'CareCircle does not give medical advice. If you are unsure, ask your doctor or pharmacist.';
 
 /** Wraps content in a simple, accessible email layout (large text, high contrast). */
 function emailHtml({ heading, paragraphs, actions = [], footer }) {
@@ -42,8 +46,15 @@ ${buttons}
  * notifier can translate them into the recipient's language and rebuild.
  */
 export function buildMessage({ subject, heading, paragraphs, actions = [], footer = DISCLAIMER }) {
-  const text = [heading, ...paragraphs, ...actions.map((a) => `${a.label}: ${a.url}`), footer].join('\n\n');
-  return { subject, text, html: emailHtml({ heading, paragraphs, actions, footer }), parts: { subject, heading, paragraphs, actions, footer } };
+  const text = [heading, ...paragraphs, ...actions.map((a) => `${a.label}: ${a.url}`), footer].join(
+    '\n\n',
+  );
+  return {
+    subject,
+    text,
+    html: emailHtml({ heading, paragraphs, actions, footer }),
+    parts: { subject, heading, paragraphs, actions, footer },
+  };
 }
 const build = buildMessage;
 
@@ -52,10 +63,20 @@ export const messages = {
     const when = whenFor(recipient, Date.parse(dose.scheduledAt), elder);
     const isElder = recipient.id === elder.id;
     return build({
-      subject: isElder ? `Time for ${medLabel(med)}` : `${firstName(elder.name)}'s ${medLabel(med)} is due`,
-      heading: isElder ? `Time for your medicine, ${firstName(elder.name)}` : `${firstName(elder.name)}'s medicine is due`,
-      paragraphs: [`${medLabel(med)} at ${when}.`, med.instructions ? `How to take it: ${med.instructions}.` : null].filter(Boolean),
-      actions: [actionUrl && { label: isElder ? "I've taken it" : 'Mark as taken', url: actionUrl }, { label: 'Open CareCircle', url: appUrl }].filter(Boolean),
+      subject: isElder
+        ? `Time for ${medLabel(med)}`
+        : `${firstName(elder.name)}'s ${medLabel(med)} is due`,
+      heading: isElder
+        ? `Time for your medicine, ${firstName(elder.name)}`
+        : `${firstName(elder.name)}'s medicine is due`,
+      paragraphs: [
+        `${medLabel(med)} at ${when}.`,
+        med.instructions ? `How to take it: ${med.instructions}.` : null,
+      ].filter(Boolean),
+      actions: [
+        actionUrl && { label: isElder ? "I've taken it" : 'Mark as taken', url: actionUrl },
+        { label: 'Open CareCircle', url: appUrl },
+      ].filter(Boolean),
     });
   },
 
@@ -63,14 +84,23 @@ export const messages = {
     const when = whenFor(recipient, Date.parse(dose.scheduledAt), elder);
     const isElder = recipient.id === elder.id;
     return build({
-      subject: isElder ? `Did you take ${medLabel(med)}?` : `${firstName(elder.name)} may have missed ${medLabel(med)}`,
-      heading: isElder ? `Did you take ${medLabel(med)}?` : `${firstName(elder.name)} may have missed a dose`,
+      subject: isElder
+        ? `Did you take ${medLabel(med)}?`
+        : `${firstName(elder.name)} may have missed ${medLabel(med)}`,
+      heading: isElder
+        ? `Did you take ${medLabel(med)}?`
+        : `${firstName(elder.name)} may have missed a dose`,
       paragraphs: [
         `${medLabel(med)} was due at ${when} and has not been marked as taken.`,
-        isElder ? 'If you took it, tap the button below.' : `If ${firstName(elder.name)} took it, you can mark it below.`,
+        isElder
+          ? 'If you took it, tap the button below.'
+          : `If ${firstName(elder.name)} took it, you can mark it below.`,
         'If you are not sure what to do about a missed dose, ask your pharmacist or doctor.',
       ],
-      actions: [actionUrl && { label: isElder ? "Yes, I've taken it" : 'Mark as taken', url: actionUrl }, { label: 'Open CareCircle', url: appUrl }].filter(Boolean),
+      actions: [
+        actionUrl && { label: isElder ? "Yes, I've taken it" : 'Mark as taken', url: actionUrl },
+        { label: 'Open CareCircle', url: appUrl },
+      ].filter(Boolean),
     });
   },
 
@@ -83,13 +113,18 @@ export const messages = {
         `It was due at ${when}. ${firstName(elder.name)} was reminded but it is still not marked as taken.`,
         `You may want to call ${firstName(elder.name)}${elder.phone ? ` on ${elder.phone}` : ''} to check in.`,
       ],
-      actions: [elder.phone && { label: `Call ${firstName(elder.name)}`, url: `tel:${elder.phone}` }, { label: 'Open CareCircle', url: appUrl }].filter(Boolean),
+      actions: [
+        elder.phone && { label: `Call ${firstName(elder.name)}`, url: `tel:${elder.phone}` },
+        { label: 'Open CareCircle', url: appUrl },
+      ].filter(Boolean),
     });
   },
 
   appointment({ recipient, elder, appointment, soon, appUrl, visitSummary }) {
     const when = whenFor(recipient, Date.parse(appointment.startsAt), elder);
-    const place = [appointment.location?.name, appointment.location?.address].filter(Boolean).join(', ');
+    const place = [appointment.location?.name, appointment.location?.address]
+      .filter(Boolean)
+      .join(', ');
     const who = recipient.id === elder.id ? 'You have' : `${firstName(elder.name)} has`;
     return build({
       subject: `${soon ? 'Soon' : 'Tomorrow'}: ${appointment.title}`,
@@ -99,11 +134,20 @@ export const messages = {
         place ? `Where: ${place}.` : null,
         soon ? 'Remember to take your medicine list and any reports.' : null,
         visitSummary?.overview ? `Before the visit: ${visitSummary.overview}` : null,
-        visitSummary?.questionsForDoctor?.length ? `Questions you might ask: ${visitSummary.questionsForDoctor.join(' • ')}` : null,
+        visitSummary?.questionsForDoctor?.length
+          ? `Questions you might ask: ${visitSummary.questionsForDoctor.join(' • ')}`
+          : null,
       ].filter(Boolean),
       actions: [
-        appointment.links?.directions && { label: 'Get directions', url: appointment.links.directions },
-        !soon && appointment.links?.googleCalendar && { label: 'Add to Google Calendar', url: appointment.links.googleCalendar },
+        appointment.links?.directions && {
+          label: 'Get directions',
+          url: appointment.links.directions,
+        },
+        !soon &&
+          appointment.links?.googleCalendar && {
+            label: 'Add to Google Calendar',
+            url: appointment.links.googleCalendar,
+          },
         { label: 'Open CareCircle', url: appUrl },
       ].filter(Boolean),
     });
@@ -120,7 +164,10 @@ export const messages = {
           : `${supply.count} remaining.`,
         'Please arrange a refill soon. When it is bought, add it in CareCircle so the count stays right.',
       ],
-      actions: [{ label: 'Find a pharmacy', url: pharmacyUrl }, { label: 'Open CareCircle', url: appUrl }],
+      actions: [
+        { label: 'Find a pharmacy', url: pharmacyUrl },
+        { label: 'Open CareCircle', url: appUrl },
+      ],
     });
   },
 
@@ -128,7 +175,10 @@ export const messages = {
     return build({
       subject: `${change.proposedBy.name} suggested a change`,
       heading: `${firstName(elder.name)}, please check a suggested change`,
-      paragraphs: [`${change.proposedBy.name} suggested: ${change.summary}.`, 'Nothing changes until you say yes.'],
+      paragraphs: [
+        `${change.proposedBy.name} suggested: ${change.summary}.`,
+        'Nothing changes until you say yes.',
+      ],
       actions: [{ label: 'Review in CareCircle', url: appUrl }],
       footer: 'You are in charge of your own care. You can say yes or no to any change.',
     });
@@ -137,20 +187,28 @@ export const messages = {
   weekly_summary({ recipient, elder, adherence, appUrl }) {
     const t = adherence.totals;
     const who = recipient.id === elder.id ? 'You' : firstName(elder.name);
-    const lines = adherence.medications.map((m) => `${m.name}: ${m.taken} of ${m.expected} taken${m.missed ? `, ${m.missed} missed` : ''}.`);
+    const lines = adherence.medications.map(
+      (m) =>
+        `${m.name}: ${m.taken} of ${m.expected} taken${m.missed ? `, ${m.missed} missed` : ''}.`,
+    );
     return build({
       subject: `Weekly summary for ${firstName(elder.name)}: ${t.adherencePercent ?? 0}% of doses taken`,
       heading: `This week, ${who} took ${t.taken} of ${t.expected} doses`,
       paragraphs: [
         ...lines,
-        adherence.streakDays > 1 ? `${adherence.streakDays} days in a row with every dose taken. Well done!` : null,
+        adherence.streakDays > 1
+          ? `${adherence.streakDays} days in a row with every dose taken. Well done!`
+          : null,
       ].filter(Boolean),
       actions: [{ label: 'See details', url: appUrl }],
     });
   },
 
   sos({ recipient, sender, elder, location, note, sentAt, appUrl }) {
-    const from = sender.id === elder.id ? firstName(sender.name) : `${firstName(sender.name)} (for ${firstName(elder.name)})`;
+    const from =
+      sender.id === elder.id
+        ? firstName(sender.name)
+        : `${firstName(sender.name)} (for ${firstName(elder.name)})`;
     const when = formatForPerson(sentAt, recipient.timezone ?? elder.timezone);
     const where = location
       ? `Location: ${location.mapUrl}${location.accuracyMeters ? ` (within about ${Math.round(location.accuracyMeters)} m)` : ''}`
@@ -167,10 +225,15 @@ export const messages = {
       actions: [
         location && { label: 'Open the location in Google Maps', url: location.mapUrl },
         sender.phone && { label: `Call ${firstName(sender.name)}`, url: `tel:${sender.phone}` },
-        elder.phone && sender.id !== elder.id && { label: `Call ${firstName(elder.name)}`, url: `tel:${elder.phone}` },
+        elder.phone &&
+          sender.id !== elder.id && {
+            label: `Call ${firstName(elder.name)}`,
+            url: `tel:${elder.phone}`,
+          },
         { label: 'Open CareCircle', url: appUrl },
       ].filter(Boolean),
-      footer: 'CareCircle is not an emergency service. In an emergency, call your local emergency number.',
+      footer:
+        'CareCircle is not an emergency service. In an emergency, call your local emergency number.',
     });
   },
 

@@ -10,7 +10,8 @@ export function authenticate({ tokens, profiles }) {
     const header = req.get('authorization') ?? '';
     const [scheme, token] = header.split(' ');
     const claims = scheme === 'Bearer' ? tokens.verify(token) : null;
-    if (!claims || claims.typ !== 'session') throw new HttpError(401, 'Please sign in.', 'UNAUTHENTICATED');
+    if (!claims || claims.typ !== 'session')
+      throw new HttpError(401, 'Please sign in.', 'UNAUTHENTICATED');
 
     const member = await profiles.getMember(claims.pid, claims.mid);
     if (!member || member.status !== 'active' || member.tokenVersion !== claims.v) {

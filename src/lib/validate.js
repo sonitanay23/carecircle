@@ -11,13 +11,26 @@ const fail = (msg) => {
   throw new ValidationIssue(msg);
 };
 
-export const LANGUAGES = Object.freeze(['en', 'hi', 'ta', 'te', 'bn', 'mr', 'gu', 'kn', 'ml', 'pa', 'ur']);
+export const LANGUAGES = Object.freeze([
+  'en',
+  'hi',
+  'ta',
+  'te',
+  'bn',
+  'mr',
+  'gu',
+  'kn',
+  'ml',
+  'pa',
+  'ur',
+]);
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const PHONE_E164 = /^\+[1-9]\d{7,14}$/;
 
 /** Marks a validator as optional: undefined/null/'' pass through as undefined. */
 export const optional = (validator) => {
-  const v = (value) => (value === undefined || value === null || value === '' ? undefined : validator(value));
+  const v = (value) =>
+    value === undefined || value === null || value === '' ? undefined : validator(value);
   v.optional = true;
   return v;
 };
@@ -89,7 +102,8 @@ export const array =
   };
 
 export const object = (schema) => (value) => {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) fail('must be an object');
+  if (value === null || typeof value !== 'object' || Array.isArray(value))
+    fail('must be an object');
   const out = {};
   for (const [key, validator] of Object.entries(schema)) {
     try {
@@ -144,7 +158,10 @@ export const timeOfDay = () => (value) => {
 
 export const isoDate = () => (value) => {
   const s = string({ max: 10 })(value);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || new Date(`${s}T00:00:00Z`).toISOString().slice(0, 10) !== s) {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(s) ||
+    new Date(`${s}T00:00:00Z`).toISOString().slice(0, 10) !== s
+  ) {
     fail('must be a date like 2026-11-15');
   }
   return s;

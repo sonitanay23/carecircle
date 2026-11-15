@@ -18,7 +18,19 @@ const VERSIONS = [
   [292, 22, [3, 36], [2, 37]],
   [346, 26, [4, 43], [1, 44]],
 ];
-const ALIGN = [null, [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38], [6, 24, 42], [6, 26, 46], [6, 28, 50]];
+const ALIGN = [
+  null,
+  [],
+  [6, 18],
+  [6, 22],
+  [6, 26],
+  [6, 30],
+  [6, 34],
+  [6, 22, 38],
+  [6, 24, 42],
+  [6, 26, 46],
+  [6, 28, 50],
+];
 const EC_LEVEL_M = 0b00;
 
 // ---- GF(256) arithmetic for Reed-Solomon ----
@@ -74,7 +86,8 @@ function encodeData(bytes, version) {
   push(0, Math.min(4, dataCapacity * 8 - bits.length)); // terminator
   while (bits.length % 8) bits.push(0);
   const data = [];
-  for (let i = 0; i < bits.length; i += 8) data.push(bits.slice(i, i + 8).reduce((a, b) => (a << 1) | b, 0));
+  for (let i = 0; i < bits.length; i += 8)
+    data.push(bits.slice(i, i + 8).reduce((a, b) => (a << 1) | b, 0));
   for (let pad = 0xec; data.length < dataCapacity; pad ^= 0xec ^ 0x11) data.push(pad);
 
   // Split into blocks, add error correction, then interleave.
@@ -152,8 +165,15 @@ function buildMatrix(version, codewords, mask) {
   const pos = ALIGN[version];
   for (const ay of pos) {
     for (const ax of pos) {
-      if ((ax === 6 && ay === 6) || (ax === 6 && ay === pos.at(-1)) || (ax === pos.at(-1) && ay === 6)) continue;
-      for (let dy = -2; dy <= 2; dy += 1) for (let dx = -2; dx <= 2; dx += 1) set(ax + dx, ay + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+      if (
+        (ax === 6 && ay === 6) ||
+        (ax === 6 && ay === pos.at(-1)) ||
+        (ax === pos.at(-1) && ay === 6)
+      )
+        continue;
+      for (let dy = -2; dy <= 2; dy += 1)
+        for (let dx = -2; dx <= 2; dx += 1)
+          set(ax + dx, ay + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
     }
   }
 
@@ -216,7 +236,9 @@ function penalty(m) {
       }
     }
     const s = line.map((d) => (d ? 1 : 0)).join('');
-    score += 40 * ((s.match(/(?=10111010000)/g) ?? []).length + (s.match(/(?=00001011101)/g) ?? []).length);
+    score +=
+      40 *
+      ((s.match(/(?=10111010000)/g) ?? []).length + (s.match(/(?=00001011101)/g) ?? []).length);
   }
   for (let y = 0; y < size - 1; y += 1) {
     for (let x = 0; x < size - 1; x += 1) {
@@ -258,6 +280,9 @@ export function qrSvg(text, { label = 'QR code', quiet = 4 } = {}) {
       if (dark) path += `M${x + quiet} ${y + quiet}h1v1h-1z`;
     }),
   );
-  const safe = String(label).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const safe = String(label).replace(
+    /[&<>"]/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+  );
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" role="img" aria-label="${safe}"><rect width="${n}" height="${n}" fill="#fff"/><path d="${path}" fill="#000"/></svg>`;
 }

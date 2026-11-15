@@ -23,14 +23,36 @@ const WEEKLY_SUMMARY = { weekday: 0, time: '18:00' }; // Sunday evening, elder's
  * Every send goes through the notifier ledger, so runs can overlap or repeat
  * without anyone getting a message twice.
  */
-export function createReminderService({ store, profiles, medications, doses, appointments, changes, notifier, tokens, config, logger, now, assistant }) {
+export function createReminderService({
+  store,
+  profiles,
+  medications,
+  doses,
+  appointments,
+  changes,
+  notifier,
+  tokens,
+  config,
+  logger,
+  now,
+  assistant,
+}) {
   const { leadMinutes, escalateAfterMinutes, lookbackHours } = config.reminders;
   const graceMs = config.missedAfterMinutes * MINUTE;
   const appUrl = config.appBaseUrl;
 
   const actionUrl = (pid, member, med, dose) =>
     `${appUrl}/a/${tokens.issue(
-      { typ: 'action', act: 'dose_taken', pid, mid: member.id, v: member.tokenVersion, med: med.id, date: dose.date, time: dose.time },
+      {
+        typ: 'action',
+        act: 'dose_taken',
+        pid,
+        mid: member.id,
+        v: member.tokenVersion,
+        med: med.id,
+        date: dose.date,
+        time: dose.time,
+      },
       { ttlSeconds: ACTION_TTL_SECONDS },
     )}`;
 
@@ -39,7 +61,10 @@ export function createReminderService({ store, profiles, medications, doses, app
     const t = now();
     const today = localDate(t, profile.timezone);
     const yesterday = addDays(today, -1);
-    const [meds, records] = await Promise.all([medications.all(pid), doses.history(pid, { from: yesterday, to: today })]);
+    const [meds, records] = await Promise.all([
+      medications.all(pid),
+      doses.history(pid, { from: yesterday, to: today }),
+    ]);
     const byKey = new Map(records.map((r) => [r.id, r]));
     const carers = members.filter((m) => m.role === 'elder' || m.role === 'caretaker');
     const family = members.filter((m) => m.role === 'family');
@@ -59,7 +84,15 @@ export function createReminderService({ store, profiles, medications, doses, app
               kind: 'dose_upcoming',
               ref: { medicationId: med.id, dose: dose.key },
               recipients: carers,
-              build: (recipient) => messages.dose_upcoming({ recipient, elder, med, dose, actionUrl: actionUrl(pid, recipient, med, dose), appUrl }),
+              build: (recipient) =>
+                messages.dose_upcoming({
+                  recipient,
+                  elder,
+                  med,
+                  dose,
+                  actionUrl: actionUrl(pid, recipient, med, dose),
+                  appUrl,
+                }),
             });
             stats.sent += r.sent;
             continue;
@@ -78,7 +111,15 @@ export function createReminderService({ store, profiles, medications, doses, app
             kind: 'dose_missed',
             ref: { medicationId: med.id, dose: dose.key },
             recipients: carers,
-            build: (recipient) => messages.dose_missed({ recipient, elder, med, dose, actionUrl: actionUrl(pid, recipient, med, dose), appUrl }),
+            build: (recipient) =>
+              messages.dose_missed({
+                recipient,
+                elder,
+                med,
+                dose,
+                actionUrl: actionUrl(pid, recipient, med, dose),
+                appUrl,
+              }),
           });
           stats.sent += missed.sent;
 
@@ -89,7 +130,8 @@ export function createReminderService({ store, profiles, medications, doses, app
               kind: 'dose_escalated',
               ref: { medicationId: med.id, dose: dose.key },
               recipients: family,
-              build: (recipient) => messages.dose_escalated({ recipient, elder, med, dose, appUrl }),
+              build: (recipient) =>
+                messages.dose_escalated({ recipient, elder, med, dose, appUrl }),
             });
             stats.sent += esc.sent;
           }
@@ -105,9 +147,17 @@ export function createReminderService({ store, profiles, medications, doses, app
           ref: { medicationId: med.id },
           recipients: members,
           build: (recipient) =>
-            messages.low_stock({ recipient, elder, med, supply, appUrl, pharmacyUrl: googleMapsSearchUrl('pharmacy near me') }),
+            messages.low_stock({
+              recipient,
+              elder,
+              med,
+              supply,
+              appUrl,
+              pharmacyUrl: googleMapsSearchUrl('pharmacy near me'),
+            }),
         });
-        if (r.sent || r.skipped || r.noRecipients) await medications.markLowStockNotified(pid, med.id);
+        if (r.sent || r.skipped || r.noRecipients)
+          await medications.markLowStockNotified(pid, med.id);
         stats.sent += r.sent;
       }
     }
@@ -116,25 +166,36 @@ export function createReminderService({ store, profiles, medications, doses, app
   async function remindAppointments(ctx) {
     const { pid, elder, members, stats } = ctx;
     const t = now();
-    const upcoming = await appointments.between(pid, new Date(t).toISOString(), new Date(t + 24 * HOUR).toISOString());
+    const upcoming = await appointments.between(
+      pid,
+      new Date(t).toISOString(),
+      new Date(t + 24 * HOUR).toISOString(),
+    );
     for (const raw of upcoming) {
       const appointment = await appointments.get(pid, raw.id);
       const soon = Date.parse(appointment.startsAt) - t <= 2 * HOUR;
       const kind = soon ? 'appointment_soon' : 'appointment_day_before';
       // The day before, add a Gemini summary to take to the doctor (best effort).
       let visitSummary = null;
-      if (!soon && assistant?.enabled && !(await notifier.alreadySent(pid, `${kind}_${appointment.id}`))) {
-        visitSummary = await assistant.visitSummary(pid, appointment.id, elder.language ?? 'en').catch((err) => {
-          logger.warn('visit_summary_failed', { error: err.message });
-          return null;
-        });
+      if (
+        !soon &&
+        assistant?.enabled &&
+        !(await notifier.alreadySent(pid, `${kind}_${appointment.id}`))
+      ) {
+        visitSummary = await assistant
+          .visitSummary(pid, appointment.id, elder.language ?? 'en')
+          .catch((err) => {
+            logger.warn('visit_summary_failed', { error: err.message });
+            return null;
+          });
       }
       const r = await notifier.send(pid, {
         id: `${kind}_${appointment.id}`,
         kind,
         ref: { appointmentId: appointment.id },
         recipients: members,
-        build: (recipient) => messages.appointment({ recipient, elder, appointment, soon, appUrl, visitSummary }),
+        build: (recipient) =>
+          messages.appointment({ recipient, elder, appointment, soon, appUrl, visitSummary }),
       });
       stats.sent += r.sent;
     }
@@ -160,7 +221,11 @@ export function createReminderService({ store, profiles, medications, doses, app
     const { pid, profile, elder, members, stats } = ctx;
     const t = now();
     const today = localDate(t, profile.timezone);
-    if (weekday(today) !== WEEKLY_SUMMARY.weekday || localTime(t, profile.timezone) < WEEKLY_SUMMARY.time) return;
+    if (
+      weekday(today) !== WEEKLY_SUMMARY.weekday ||
+      localTime(t, profile.timezone) < WEEKLY_SUMMARY.time
+    )
+      return;
     const adherence = await doses.adherence(pid, { days: 7 });
     if (!adherence.totals.expected) return;
     const r = await notifier.send(pid, {
@@ -179,7 +244,13 @@ export function createReminderService({ store, profiles, medications, doses, app
       const members = await profiles.listMembers(pid);
       const elder = members.find((m) => m.role === 'elder');
       if (!elder) return { sent: 0, markedMissed: 0 };
-      const ctx = { pid, profile, elder, members: members.filter((m) => m.status === 'active'), stats: { sent: 0, markedMissed: 0 } };
+      const ctx = {
+        pid,
+        profile,
+        elder,
+        members: members.filter((m) => m.status === 'active'),
+        stats: { sent: 0, markedMissed: 0 },
+      };
       await remindDoses(ctx);
       await remindAppointments(ctx);
       await remindApprovals(ctx);

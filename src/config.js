@@ -31,7 +31,8 @@ export function loadConfig(env = process.env) {
 
   // Production must supply a real secret (from Secret Manager). Locally we make
   // a random one, so sessions simply reset when the server restarts.
-  const sessionSecret = env.SESSION_SECRET ?? (isProduction ? undefined : randomBytes(32).toString('hex'));
+  const sessionSecret =
+    env.SESSION_SECRET ?? (isProduction ? undefined : randomBytes(32).toString('hex'));
   if (!sessionSecret || sessionSecret.length < 32) {
     throw new Error('SESSION_SECRET must be set and at least 32 characters');
   }
@@ -48,12 +49,14 @@ export function loadConfig(env = process.env) {
 
   const int = (name, fallback, min, max) => {
     const v = Number.parseInt(env[name] ?? String(fallback), 10);
-    if (!Number.isInteger(v) || v < min || v > max) throw new Error(`Invalid ${name}: ${env[name]}`);
+    if (!Number.isInteger(v) || v < min || v > max)
+      throw new Error(`Invalid ${name}: ${env[name]}`);
     return v;
   };
 
   const mailTransport = (env.MAIL_TRANSPORT ?? (env.SMTP_HOST ? 'smtp' : 'log')).toLowerCase();
-  if (!['smtp', 'log'].includes(mailTransport)) throw new Error(`Invalid MAIL_TRANSPORT: ${env.MAIL_TRANSPORT}`);
+  if (!['smtp', 'log'].includes(mailTransport))
+    throw new Error(`Invalid MAIL_TRANSPORT: ${env.MAIL_TRANSPORT}`);
   if (mailTransport === 'smtp' && (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASS)) {
     throw new Error('SMTP_HOST, SMTP_USER and SMTP_PASS are required when MAIL_TRANSPORT=smtp');
   }
@@ -101,7 +104,11 @@ export function loadConfig(env = process.env) {
       port: int('SMTP_PORT', 465, 1, 65535),
       user: env.SMTP_USER ?? null,
       pass: env.SMTP_PASS ?? null,
-      from: env.MAIL_FROM ?? (env.SMTP_USER ? `CareCircle <${env.SMTP_USER}>` : 'CareCircle <no-reply@carecircle.local>'),
+      from:
+        env.MAIL_FROM ??
+        (env.SMTP_USER
+          ? `CareCircle <${env.SMTP_USER}>`
+          : 'CareCircle <no-reply@carecircle.local>'),
     }),
     version: env.K_REVISION ?? 'local',
   });

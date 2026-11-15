@@ -33,13 +33,22 @@ export function createAppointmentService({ store, activity, changes, profiles, n
     const profile = await profiles.getProfile(pid);
     if (change.action === 'create') {
       const id = newId();
-      await appts(pid).create(id, { ...withTimes(change.data, profile.timezone), status: 'scheduled', createdAt: iso(), updatedAt: iso() });
+      await appts(pid).create(id, {
+        ...withTimes(change.data, profile.timezone),
+        status: 'scheduled',
+        createdAt: iso(),
+        updatedAt: iso(),
+      });
       return { entityId: id };
     }
     const current = await getOrThrow(pid, change.targetId);
-    if (current.status !== 'scheduled') throw new HttpError(409, `This appointment is already ${current.status}.`, 'NOT_SCHEDULED');
+    if (current.status !== 'scheduled')
+      throw new HttpError(409, `This appointment is already ${current.status}.`, 'NOT_SCHEDULED');
     if (change.action === 'update') {
-      await appts(pid).set(current.id, { ...withTimes({ ...current, ...change.data }, profile.timezone), updatedAt: iso() });
+      await appts(pid).set(current.id, {
+        ...withTimes({ ...current, ...change.data }, profile.timezone),
+        updatedAt: iso(),
+      });
     } else if (change.action === 'cancel') {
       await appts(pid).update(current.id, { status: 'cancelled', updatedAt: iso() });
     }
@@ -58,12 +67,16 @@ export function createAppointmentService({ store, activity, changes, profiles, n
           title: `${a.title}${elderName ? ` (${elderName})` : ''}`,
           startMs: Date.parse(a.startsAt),
           endMs: Date.parse(a.endsAt),
-          details: [a.doctor && `Doctor: ${a.doctor}`, a.notes, 'Added from CareCircle'].filter(Boolean).join('\n'),
+          details: [a.doctor && `Doctor: ${a.doctor}`, a.notes, 'Added from CareCircle']
+            .filter(Boolean)
+            .join('\n'),
           location: place || undefined,
         }),
         directions: place ? googleMapsDirectionsUrl(place) : null,
         map: place ? googleMapsSearchUrl(place) : null,
-        nearbyPharmacies: a.location?.address ? googleMapsSearchUrl(`pharmacy near ${a.location.address}`) : null,
+        nearbyPharmacies: a.location?.address
+          ? googleMapsSearchUrl(`pharmacy near ${a.location.address}`)
+          : null,
       },
     };
   };
@@ -80,7 +93,9 @@ export function createAppointmentService({ store, activity, changes, profiles, n
         if (when === 'all') return true;
         if (a.status === 'cancelled') return false;
         const ended = Date.parse(a.endsAt) < t;
-        return when === 'past' ? ended || a.status === 'completed' : !ended && a.status === 'scheduled';
+        return when === 'past'
+          ? ended || a.status === 'completed'
+          : !ended && a.status === 'scheduled';
       });
       if (when === 'past') filtered.reverse();
       return filtered.map((a) => view(a, profile.elderName));
@@ -108,12 +123,18 @@ export function createAppointmentService({ store, activity, changes, profiles, n
       if (zonedToUtc(data.date, data.time, profile.timezone) < now()) {
         throw new HttpError(400, 'That date and time has already passed.', 'IN_PAST');
       }
-      return changes.propose(pid, actor, { entity: 'appointment', action: 'create', data, summary: `book ${label(data)}` });
+      return changes.propose(pid, actor, {
+        entity: 'appointment',
+        action: 'create',
+        data,
+        summary: `book ${label(data)}`,
+      });
     },
 
     async proposeUpdate(pid, actor, id, patch) {
       const current = await getOrThrow(pid, id);
-      if (current.status !== 'scheduled') throw new HttpError(409, `This appointment is already ${current.status}.`, 'NOT_SCHEDULED');
+      if (current.status !== 'scheduled')
+        throw new HttpError(409, `This appointment is already ${current.status}.`, 'NOT_SCHEDULED');
       const merged = { ...current, ...patch };
       return changes.propose(pid, actor, {
         entity: 'appointment',
@@ -126,14 +147,25 @@ export function createAppointmentService({ store, activity, changes, profiles, n
 
     async proposeCancel(pid, actor, id) {
       const current = await getOrThrow(pid, id);
-      if (current.status !== 'scheduled') throw new HttpError(409, `This appointment is already ${current.status}.`, 'NOT_SCHEDULED');
-      return changes.propose(pid, actor, { entity: 'appointment', action: 'cancel', targetId: id, summary: `cancel ${label(current)}` });
+      if (current.status !== 'scheduled')
+        throw new HttpError(409, `This appointment is already ${current.status}.`, 'NOT_SCHEDULED');
+      return changes.propose(pid, actor, {
+        entity: 'appointment',
+        action: 'cancel',
+        targetId: id,
+        summary: `cancel ${label(current)}`,
+      });
     },
 
     async markAttended(pid, actor, id, notes) {
       const current = await getOrThrow(pid, id);
-      if (current.status !== 'scheduled') throw new HttpError(409, `This appointment is already ${current.status}.`, 'NOT_SCHEDULED');
-      const updated = await appts(pid).update(id, { status: 'completed', visitNotes: notes ?? null, updatedAt: iso() });
+      if (current.status !== 'scheduled')
+        throw new HttpError(409, `This appointment is already ${current.status}.`, 'NOT_SCHEDULED');
+      const updated = await appts(pid).update(id, {
+        status: 'completed',
+        visitNotes: notes ?? null,
+        updatedAt: iso(),
+      });
       await activity.record(pid, actor, {
         action: 'appointment.completed',
         summary: `${actor.name} marked ${current.title} as attended.`,

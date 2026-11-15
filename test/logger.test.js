@@ -21,7 +21,10 @@ test('filters below the configured level', () => {
   logger.info('skip');
   logger.debug('skip');
   logger.warn('keep');
-  assert.deepEqual(lines.map((l) => l.severity), ['WARNING']);
+  assert.deepEqual(
+    lines.map((l) => l.severity),
+    ['WARNING'],
+  );
 });
 
 test('adds stack_trace for Error Reporting', () => {

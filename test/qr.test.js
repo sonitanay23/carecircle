@@ -14,10 +14,19 @@ const finderAt = (m, x, y) => {
 };
 
 test('QR size grows with the text and has the three finder patterns', () => {
-  for (const [text, size] of [['A', 21], ['x'.repeat(40), 29], ['https://care.example/id/' + 'Q'.repeat(32), 33], ['y'.repeat(150), 49], ['w'.repeat(213), 57]]) {
+  for (const [text, size] of [
+    ['A', 21],
+    ['x'.repeat(40), 29],
+    ['https://care.example/id/' + 'Q'.repeat(32), 33],
+    ['y'.repeat(150), 49],
+    ['w'.repeat(213), 57],
+  ]) {
     const m = qrMatrix(text);
     assert.equal(m.length, size, `size for ${text.length} chars`);
-    assert.ok(finderAt(m, 0, 0) && finderAt(m, size - 7, 0) && finderAt(m, 0, size - 7), 'finder patterns');
+    assert.ok(
+      finderAt(m, 0, 0) && finderAt(m, size - 7, 0) && finderAt(m, 0, size - 7),
+      'finder patterns',
+    );
   }
 });
 
@@ -30,5 +39,9 @@ test('QR SVG is accessible and escapes its label', () => {
   const svg = qrSvg('https://care.example', { label: 'Scan <me> & go' });
   assert.match(svg, /^<svg [^>]*role="img"/);
   assert.match(svg, /aria-label="Scan &lt;me&gt; &amp; go"/);
-  assert.match(svg, /viewBox="0 0 33 33"/, '25 modules (version 2) + 4-module quiet zone on each side');
+  assert.match(
+    svg,
+    /viewBox="0 0 33 33"/,
+    '25 modules (version 2) + 4-module quiet zone on each side',
+  );
 });

@@ -30,7 +30,9 @@ test('session tokens: valid, tampered and expired', () => {
   assert.equal(tokens.verify(token).mid, 'M');
 
   const [body, sig] = token.split('.');
-  const forged = Buffer.from(JSON.stringify({ pid: 'P', mid: 'ADMIN', v: 1, exp: 9e12 })).toString('base64url');
+  const forged = Buffer.from(JSON.stringify({ pid: 'P', mid: 'ADMIN', v: 1, exp: 9e12 })).toString(
+    'base64url',
+  );
   assert.equal(tokens.verify(`${forged}.${sig}`), null);
   assert.equal(tokens.verify(`${body}.${sig}x`), null);
   assert.equal(tokens.verify('not-a-token'), null);

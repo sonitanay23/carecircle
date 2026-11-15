@@ -28,8 +28,17 @@ export function errorHandler(logger) {
 
     res.status(status).json({
       error: {
-        code: isKnown ? err.code : status === 500 ? 'INTERNAL' : status === 413 ? 'TOO_LARGE' : 'BAD_REQUEST',
-        message: status === 500 ? 'Something went wrong. Please try again.' : (!isKnown && PARSER_MESSAGES[err.type]) || err.message,
+        code: isKnown
+          ? err.code
+          : status === 500
+            ? 'INTERNAL'
+            : status === 413
+              ? 'TOO_LARGE'
+              : 'BAD_REQUEST',
+        message:
+          status === 500
+            ? 'Something went wrong. Please try again.'
+            : (!isKnown && PARSER_MESSAGES[err.type]) || err.message,
         requestId: req.id,
       },
     });

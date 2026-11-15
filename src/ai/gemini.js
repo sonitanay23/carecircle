@@ -20,7 +20,13 @@ export const SAFETY_RULES = [
  * Minimal Gemini REST client returning structured JSON. Uses the API key in a
  * header (never in the URL, so it cannot leak into logs).
  */
-export function createGeminiClient({ apiKey, model, fetchImpl = fetch, timeoutMs = 60_000, logger }) {
+export function createGeminiClient({
+  apiKey,
+  model,
+  fetchImpl = fetch,
+  timeoutMs = 60_000,
+  logger,
+}) {
   if (!apiKey) return null;
 
   return {
@@ -33,10 +39,17 @@ export function createGeminiClient({ apiKey, model, fetchImpl = fetch, timeoutMs
       const request = (withSchema) => {
         const body = {
           systemInstruction: {
-            parts: [{ text: `${SAFETY_RULES}\n\n${instruction}${withSchema ? '' : `\n\nReply with JSON only, matching this schema: ${JSON.stringify(schema)}`}` }],
+            parts: [
+              {
+                text: `${SAFETY_RULES}\n\n${instruction}${withSchema ? '' : `\n\nReply with JSON only, matching this schema: ${JSON.stringify(schema)}`}`,
+              },
+            ],
           },
           contents: [{ role: 'user', parts: [...parts, ...(text ? [{ text }] : [])] }],
-          generationConfig: { responseMimeType: 'application/json', ...(withSchema ? { responseSchema: schema } : {}) },
+          generationConfig: {
+            responseMimeType: 'application/json',
+            ...(withSchema ? { responseSchema: schema } : {}),
+          },
         };
         return fetchImpl(`${API}/${encodeURIComponent(model)}:generateContent`, {
           method: 'POST',
@@ -51,7 +64,9 @@ export function createGeminiClient({ apiKey, model, fetchImpl = fetch, timeoutMs
         res = await request(true);
         // Some models reject parts of a response schema. Retry once in plain JSON mode.
         if (res.status === 400) {
-          logger?.warn('gemini_schema_rejected', { detail: (await res.text().catch(() => '')).slice(0, 300) });
+          logger?.warn('gemini_schema_rejected', {
+            detail: (await res.text().catch(() => '')).slice(0, 300),
+          });
           res = await request(false);
         }
       } catch (err) {
@@ -59,12 +74,16 @@ export function createGeminiClient({ apiKey, model, fetchImpl = fetch, timeoutMs
         // `cause` holds the real network reason (ENOTFOUND, ECONNRESET, certificate errors...).
         logger?.warn('gemini_unreachable', {
           error: err.message,
-          reason: timedOut ? `no answer within ${timeoutMs / 1000}s` : err.cause?.code ?? err.cause?.message ?? 'network error',
+          reason: timedOut
+            ? `no answer within ${timeoutMs / 1000}s`
+            : (err.cause?.code ?? err.cause?.message ?? 'network error'),
           model,
         });
         throw new HttpError(
           503,
-          timedOut ? 'The AI helper is taking too long. Please try again.' : 'The AI helper could not be reached. Please check the internet connection and try again.',
+          timedOut
+            ? 'The AI helper is taking too long. Please try again.'
+            : 'The AI helper could not be reached. Please check the internet connection and try again.',
           'AI_UNAVAILABLE',
         );
       }
@@ -72,13 +91,26 @@ export function createGeminiClient({ apiKey, model, fetchImpl = fetch, timeoutMs
       if (!res.ok) {
         const detail = await res.text().catch(() => '');
         logger?.warn('gemini_error', { status: res.status, detail: detail.slice(0, 300) });
-        if (res.status === 429) throw new HttpError(429, 'The AI helper is busy. Please try again in a minute.', 'AI_BUSY');
-        throw new HttpError(502, 'The AI helper could not answer right now. Please try again.', 'AI_ERROR');
+        if (res.status === 429)
+          throw new HttpError(
+            429,
+            'The AI helper is busy. Please try again in a minute.',
+            'AI_BUSY',
+          );
+        throw new HttpError(
+          502,
+          'The AI helper could not answer right now. Please try again.',
+          'AI_ERROR',
+        );
       }
 
       const data = await res.json();
       if (data.promptFeedback?.blockReason) {
-        throw new HttpError(422, 'The AI helper could not help with that. Please ask your doctor or pharmacist.', 'AI_BLOCKED');
+        throw new HttpError(
+          422,
+          'The AI helper could not help with that. Please ask your doctor or pharmacist.',
+          'AI_BLOCKED',
+        );
       }
       const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
       try {
@@ -86,7 +118,11 @@ export function createGeminiClient({ apiKey, model, fetchImpl = fetch, timeoutMs
         return JSON.parse(raw.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, ''));
       } catch {
         logger?.warn('gemini_bad_json', { sample: raw.slice(0, 200) });
-        throw new HttpError(502, 'The AI helper gave an answer we could not read. Please try again.', 'AI_BAD_RESPONSE');
+        throw new HttpError(
+          502,
+          'The AI helper gave an answer we could not read. Please try again.',
+          'AI_BAD_RESPONSE',
+        );
       }
     },
   };
@@ -96,8 +132,16 @@ export function createGeminiClient({ apiKey, model, fetchImpl = fetch, timeoutMs
 export const S = {
   str: (description) => ({ type: 'STRING', ...(description ? { description } : {}) }),
   bool: (description) => ({ type: 'BOOLEAN', ...(description ? { description } : {}) }),
-  num: (description) => ({ type: 'NUMBER', nullable: true, ...(description ? { description } : {}) }),
+  num: (description) => ({
+    type: 'NUMBER',
+    nullable: true,
+    ...(description ? { description } : {}),
+  }),
   arr: (items, description) => ({ type: 'ARRAY', items, ...(description ? { description } : {}) }),
-  obj: (properties, required = Object.keys(properties)) => ({ type: 'OBJECT', properties, required }),
+  obj: (properties, required = Object.keys(properties)) => ({
+    type: 'OBJECT',
+    properties,
+    required,
+  }),
   enum: (values) => ({ type: 'STRING', enum: values }),
 };

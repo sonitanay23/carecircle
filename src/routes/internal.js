@@ -13,7 +13,8 @@ export function internalRouter({ services, config }) {
   const router = Router();
 
   const requireCronSecret = (req, _res, next) => {
-    if (!config.cronSecret) throw new HttpError(503, 'Scheduled jobs are not configured', 'NOT_CONFIGURED');
+    if (!config.cronSecret)
+      throw new HttpError(503, 'Scheduled jobs are not configured', 'NOT_CONFIGURED');
     // Compare fixed-length digests so the check takes the same time for any input.
     if (!timingSafeEqual(digest(req.get('x-cron-secret') ?? ''), digest(config.cronSecret))) {
       throw new HttpError(401, 'Unauthorized', 'UNAUTHENTICATED');

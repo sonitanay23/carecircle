@@ -32,25 +32,58 @@ export function lineChart({ title, unit, series }) {
   const y = (v) => H - pad.b - ((v - minY) / (maxY - minY)) * (H - pad.t - pad.b);
 
   const titleId = uid('chart');
-  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img', 'aria-labelledby': titleId });
+  const svg = s('svg', {
+    viewBox: `0 0 ${W} ${H}`,
+    class: 'chart',
+    role: 'img',
+    'aria-labelledby': titleId,
+  });
   svg.append(s('title', { id: titleId }, `${title} over time, in ${unit}`));
   for (let i = 0; i <= 4; i += 1) {
     const v = minY + ((maxY - minY) * i) / 4;
     svg.append(s('line', { x1: pad.l, x2: W - pad.r, y1: y(v), y2: y(v), class: 'grid' }));
-    svg.append(s('text', { x: pad.l - 8, y: y(v) + 5, 'text-anchor': 'end', class: 'axis' }, Math.round(v)));
+    svg.append(
+      s('text', { x: pad.l - 8, y: y(v) + 5, 'text-anchor': 'end', class: 'axis' }, Math.round(v)),
+    );
   }
-  svg.append(s('text', { x: pad.l, y: H - 10, class: 'axis' }, dateLabel(new Date(minT).toISOString())));
-  svg.append(s('text', { x: W - pad.r, y: H - 10, 'text-anchor': 'end', class: 'axis' }, dateLabel(new Date(maxT).toISOString())));
+  svg.append(
+    s('text', { x: pad.l, y: H - 10, class: 'axis' }, dateLabel(new Date(minT).toISOString())),
+  );
+  svg.append(
+    s(
+      'text',
+      { x: W - pad.r, y: H - 10, 'text-anchor': 'end', class: 'axis' },
+      dateLabel(new Date(maxT).toISOString()),
+    ),
+  );
 
   series.forEach((ser, i) => {
     const pts = [...ser.points].sort((a, b) => a.t.localeCompare(b.t));
-    svg.append(s('polyline', { points: pts.map((p) => `${x(p.t)},${y(p.y)}`).join(' '), class: `line line-${i}` }));
-    for (const p of pts) svg.append(s(i === 0 ? 'circle' : 'rect', i === 0 ? { cx: x(p.t), cy: y(p.y), r: 5, class: `dot dot-${i}` } : { x: x(p.t) - 5, y: y(p.y) - 5, width: 10, height: 10, class: `dot dot-${i}` }));
+    svg.append(
+      s('polyline', {
+        points: pts.map((p) => `${x(p.t)},${y(p.y)}`).join(' '),
+        class: `line line-${i}`,
+      }),
+    );
+    for (const p of pts)
+      svg.append(
+        s(
+          i === 0 ? 'circle' : 'rect',
+          i === 0
+            ? { cx: x(p.t), cy: y(p.y), r: 5, class: `dot dot-${i}` }
+            : { x: x(p.t) - 5, y: y(p.y) - 5, width: 10, height: 10, class: `dot dot-${i}` },
+        ),
+      );
   });
 
-  const legend = series.length > 1
-    ? h('ul', { class: 'legend' }, series.map((ser, i) => h('li', { class: `legend-${i}` }, ser.name)))
-    : null;
+  const legend =
+    series.length > 1
+      ? h(
+          'ul',
+          { class: 'legend' },
+          series.map((ser, i) => h('li', { class: `legend-${i}` }, ser.name)),
+        )
+      : null;
 
   const rows = [...new Set(all.map((p) => p.t))].sort().reverse();
   const table = h(
@@ -61,8 +94,28 @@ export function lineChart({ title, unit, series }) {
       'table',
       {},
       h('caption', {}, `${title} (${unit})`),
-      h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'When'), series.map((ser) => h('th', { scope: 'col' }, ser.name)))),
-      h('tbody', {}, rows.map((t) => h('tr', {}, h('th', { scope: 'row' }, dateLabel(t, { hour: 'numeric', minute: '2-digit' })), series.map((ser) => h('td', {}, ser.points.find((p) => p.t === t)?.y ?? '—'))))),
+      h(
+        'thead',
+        {},
+        h(
+          'tr',
+          {},
+          h('th', { scope: 'col' }, 'When'),
+          series.map((ser) => h('th', { scope: 'col' }, ser.name)),
+        ),
+      ),
+      h(
+        'tbody',
+        {},
+        rows.map((t) =>
+          h(
+            'tr',
+            {},
+            h('th', { scope: 'row' }, dateLabel(t, { hour: 'numeric', minute: '2-digit' })),
+            series.map((ser) => h('td', {}, ser.points.find((p) => p.t === t)?.y ?? '—')),
+          ),
+        ),
+      ),
     ),
   );
   return h('figure', { class: 'chart-wrap' }, svg, legend, table);

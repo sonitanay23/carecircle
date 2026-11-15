@@ -34,6 +34,45 @@ Built for the PromptWars _Catalyst_ challenge: Elderly Care & Medication Managem
 
 Health readings outside common general reference ranges are marked _worth mentioning to your doctor_; CareCircle never interprets them. CareCircle never gives dosage advice or diagnoses. AI output is always reviewed by a person and marked as _check with your doctor_.
 
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph People["Elder, family and caretakers"]
+    PWA["Installable web app (PWA)<br/>vanilla JS, works offline"]
+    Mail["Email inbox<br/>one-tap I've taken it links"]
+  end
+
+  subgraph Run["Google Cloud Run (Node 22 + Express)"]
+    API["REST API<br/>validation, roles, rate limits"]
+    Approve["Elder approval flow<br/>+ activity log"]
+    Engine["Reminder engine<br/>idempotent ledger"]
+    AI["AI assistant<br/>prescription scan, explain, visit summary"]
+  end
+
+  PWA -- "HTTPS, bearer token" --> API
+  API --> Approve
+  API --> AI
+  Scheduler["Cloud Scheduler<br/>every 5 min"] -- "X-Cron-Secret" --> Engine
+  Engine -- "SMTP" --> Mail
+  Mail -- "signed action link" --> API
+
+  API --> Firestore[("Firestore<br/>profiles, medicines, doses,<br/>appointments, readings")]
+  Engine --> Firestore
+  AI --> Gemini["Gemini API<br/>schema-checked JSON"]
+  API --> Translate["Cloud Translation"]
+  API --> TTS["Cloud Text-to-Speech"]
+  Run -. "secrets" .-> Secrets["Secret Manager"]
+  Run -. "structured logs" .-> Logging["Cloud Logging"]
+```
+
+**Design choices**
+
+- **The elder stays in charge:** family and caretakers _suggest_ changes to medicines and appointments; the elder approves or declines each one, and every action is recorded in the activity log.
+- **Store abstraction:** services talk to a small document-store interface, so tests run against an in-memory store and production uses Firestore with the same code.
+- **Reminders are safe to retry:** each notification has a deterministic ledger id that acts as a lock, so overlapping scheduler runs never send twice and failed sends are retried.
+- **No build step on the front end:** plain ES modules keep the app small, fast on older phones and compatible with a strict Content-Security-Policy.
+
 ## Google Cloud services
 
 - **Cloud Run** — hosting (containerised, scales to zero)

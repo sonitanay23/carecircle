@@ -1,6 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parse, string, email, phone, timezone, oneOf, optional, array, object, boolean } from '../src/lib/validate.js';
+import {
+  parse,
+  string,
+  email,
+  phone,
+  timezone,
+  oneOf,
+  optional,
+  array,
+  object,
+  boolean,
+} from '../src/lib/validate.js';
 
 test('parse cleans values and drops unknown keys', () => {
   const out = parse({ name: '  Asha ', extra: 'x' }, { name: string({ max: 10 }) });

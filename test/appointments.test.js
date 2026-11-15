@@ -25,13 +25,19 @@ test('booking needs approval and comes with Calendar and Maps links', async () =
   assert.equal(cal.searchParams.get('text'), 'Eye check-up (Kamala Devi)');
   assert.match(cal.searchParams.get('details'), /Dr Rao/);
   assert.match(appt.links.directions, /^https:\/\/www\.google\.com\/maps\/dir\//);
-  assert.equal(new URL(appt.links.nearbyPharmacies).searchParams.get('query'), 'pharmacy near Banjara Hills, Hyderabad');
+  assert.equal(
+    new URL(appt.links.nearbyPharmacies).searchParams.get('query'),
+    'pharmacy near Banjara Hills, Hyderabad',
+  );
 });
 
 test('appointments in the past are refused', async () => {
   const { services } = buildTestServices();
   const { pid, elder } = await seedFamily(services);
-  await assert.rejects(services.appointments.proposeCreate(pid, elder, { ...visit, date: '2026-11-01' }), (e) => e.code === 'IN_PAST');
+  await assert.rejects(
+    services.appointments.proposeCreate(pid, elder, { ...visit, date: '2026-11-01' }),
+    (e) => e.code === 'IN_PAST',
+  );
 });
 
 test('reschedule, cancel and attended move between lists', async () => {
@@ -46,10 +52,19 @@ test('reschedule, cancel and attended move between lists', async () => {
 
   await services.appointments.markAttended(pid, elder, id, 'New glasses prescribed');
   assert.equal((await services.appointments.list(pid)).length, 0);
-  assert.equal((await services.appointments.list(pid, { when: 'past' }))[0].visitNotes, 'New glasses prescribed');
-  await assert.rejects(services.appointments.proposeCancel(pid, elder, id), (e) => e.status === 409);
+  assert.equal(
+    (await services.appointments.list(pid, { when: 'past' }))[0].visitNotes,
+    'New glasses prescribed',
+  );
+  await assert.rejects(
+    services.appointments.proposeCancel(pid, elder, id),
+    (e) => e.status === 409,
+  );
 
-  const second = await services.appointments.proposeCreate(pid, elder, { ...visit, date: '2026-12-01' });
+  const second = await services.appointments.proposeCreate(pid, elder, {
+    ...visit,
+    date: '2026-12-01',
+  });
   await services.appointments.proposeCancel(pid, elder, second.change.targetId);
   assert.equal((await services.appointments.list(pid)).length, 0);
   assert.equal((await services.appointments.list(pid, { when: 'all' })).length, 2);

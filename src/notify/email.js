@@ -8,7 +8,12 @@ export async function createEmailChannel({ config, logger }) {
 
   if (transport === 'smtp') {
     const { default: nodemailer } = await import('nodemailer');
-    const mailer = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+    const mailer = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+    });
     return {
       name: 'email',
       async send({ to, subject, text, html }) {

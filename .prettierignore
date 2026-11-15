@@ -1,0 +1,7 @@
+node_modules
+_to_delete
+.sync-incoming
+package-lock.json
+coverage
+# HTML is hand-formatted; whitespace between inline elements is intentional.
+public/*.html

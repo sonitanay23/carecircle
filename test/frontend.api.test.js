@@ -45,7 +45,9 @@ test('service worker is never cached and the manifest has the right type', async
 });
 
 test('invite links open the join screen with a cleaned code', async () => {
-  const res = await fetch(`${root}/join?profile=AB2C-D3EF%22%3E%3Cscript%3E`, { redirect: 'manual' });
+  const res = await fetch(`${root}/join?profile=AB2C-D3EF%22%3E%3Cscript%3E`, {
+    redirect: 'manual',
+  });
   assert.equal(res.status, 302);
   assert.equal(res.headers.get('location'), '/#/join?profile=AB2C-D3EFscr');
 });
@@ -66,7 +68,11 @@ test('QR code endpoint: needs sign-in and sharing turned on', async () => {
   }).then((r) => r.json());
   const auth = { authorization: `Bearer ${login.token}` };
   assert.equal((await fetch(`${root}/api/medical-id/qr.svg`)).status, 401);
-  assert.equal((await fetch(`${root}/api/medical-id/qr.svg`, { headers: auth })).status, 404, 'sharing is off');
+  assert.equal(
+    (await fetch(`${root}/api/medical-id/qr.svg`, { headers: auth })).status,
+    404,
+    'sharing is off',
+  );
   await fetch(`${root}/api/medical-id/sharing`, { method: 'POST', headers: auth });
   const qr = await fetch(`${root}/api/medical-id/qr.svg`, { headers: auth });
   assert.equal(qr.status, 200);

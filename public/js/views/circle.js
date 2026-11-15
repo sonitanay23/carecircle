@@ -1,11 +1,26 @@
 import { api, session } from '../api.js';
-import { h, field, busy, announce, showError, confirm, dialog, copy, dateLabel, section, LANGUAGES, timezoneOptions, add } from '../ui.js';
+import {
+  h,
+  field,
+  busy,
+  announce,
+  showError,
+  confirm,
+  dialog,
+  copy,
+  dateLabel,
+  section,
+  LANGUAGES,
+  timezoneOptions,
+  add,
+} from '../ui.js';
 
 const ROLE = { elder: 'In charge', family: 'Family', caretaker: 'Caretaker' };
 
 function pendingSection(ctx, changes) {
   const isElder = ctx.me.role === 'elder';
-  if (!changes.length) return section('Waiting for approval', h('p', { class: 'muted' }, 'Nothing is waiting.'));
+  if (!changes.length)
+    return section('Waiting for approval', h('p', { class: 'muted' }, 'Nothing is waiting.'));
   return section(
     'Waiting for approval',
     isElder ? h('p', {}, 'You decide. Nothing changes until you say yes.') : null,
@@ -27,25 +42,62 @@ function pendingSection(ctx, changes) {
           'li',
           { class: 'card change' },
           h('p', { class: 'big' }, `${c.proposedBy.name} suggested: ${c.summary}`),
-          h('p', { class: 'muted' }, dateLabel(c.createdAt, { hour: 'numeric', minute: '2-digit' })),
+          h(
+            'p',
+            { class: 'muted' },
+            dateLabel(c.createdAt, { hour: 'numeric', minute: '2-digit' }),
+          ),
           h(
             'div',
             { class: 'button-row' },
-            isElder && h('button', { type: 'button', class: 'button primary big', onclick: (e) => act('approve', {}, 'Approved.', e.currentTarget) }, '✓ Yes, approve'),
             isElder &&
-              h('button', {
-                type: 'button',
-                class: 'button secondary',
-                onclick: async (e) => {
-                  const button = e.currentTarget;
-                  const reasonField = field({ label: 'Reason (optional)', name: 'reason', hint: 'This is shown to the person who suggested it.' });
-                  const ok = await dialog({ title: 'Say no to this change?', body: reasonField, actions: [{ label: 'Cancel', value: false }, { label: 'Say no', value: true, kind: 'danger' }] });
-                  if (!ok) return;
-                  const reason = reasonField.control.value.trim();
-                  await act('reject', reason ? { reason } : {}, 'Said no.', button);
+              h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'button primary big',
+                  onclick: (e) => act('approve', {}, 'Approved.', e.currentTarget),
                 },
-              }, '✗ No'),
-            c.proposedBy.id === ctx.me.id && h('button', { type: 'button', class: 'button ghost', onclick: (e) => act('withdraw', {}, 'Withdrawn.', e.currentTarget) }, 'Withdraw'),
+                '✓ Yes, approve',
+              ),
+            isElder &&
+              h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'button secondary',
+                  onclick: async (e) => {
+                    const button = e.currentTarget;
+                    const reasonField = field({
+                      label: 'Reason (optional)',
+                      name: 'reason',
+                      hint: 'This is shown to the person who suggested it.',
+                    });
+                    const ok = await dialog({
+                      title: 'Say no to this change?',
+                      body: reasonField,
+                      actions: [
+                        { label: 'Cancel', value: false },
+                        { label: 'Say no', value: true, kind: 'danger' },
+                      ],
+                    });
+                    if (!ok) return;
+                    const reason = reasonField.control.value.trim();
+                    await act('reject', reason ? { reason } : {}, 'Said no.', button);
+                  },
+                },
+                '✗ No',
+              ),
+            c.proposedBy.id === ctx.me.id &&
+              h(
+                'button',
+                {
+                  type: 'button',
+                  class: 'button ghost',
+                  onclick: (e) => act('withdraw', {}, 'Withdrawn.', e.currentTarget),
+                },
+                'Withdraw',
+              ),
           ),
         );
       }),
@@ -59,7 +111,14 @@ function peopleSection(ctx, members) {
     'form',
     { class: 'stack' },
     field({ label: 'Their name', name: 'name', required: true }),
-    field({ label: 'They are', name: 'role', options: [{ value: 'family', label: 'Family' }, { value: 'caretaker', label: 'Caretaker' }] }),
+    field({
+      label: 'They are',
+      name: 'role',
+      options: [
+        { value: 'family', label: 'Family' },
+        { value: 'caretaker', label: 'Caretaker' },
+      ],
+    }),
     h('button', { type: 'submit', class: 'button primary' }, 'Create invite'),
   );
   inviteForm.addEventListener('submit', async (e) => {
@@ -79,7 +138,11 @@ function peopleSection(ctx, members) {
             h('p', {}, `Give ${v.name} these codes. The invite works once and lasts 7 days.`),
             h('p', { class: 'code' }, 'CareCircle code: ', h('strong', {}, r.profileCode)),
             h('p', { class: 'code' }, 'Invite code: ', h('strong', {}, r.inviteCode)),
-            h('button', { type: 'button', class: 'button secondary', onclick: () => copy(message, 'Invite') }, 'Copy invite message'),
+            h(
+              'button',
+              { type: 'button', class: 'button secondary', onclick: () => copy(message, 'Invite') },
+              'Copy invite message',
+            ),
           ),
           actions: [{ label: 'Done', value: true, kind: 'primary' }],
         });
@@ -99,22 +162,40 @@ function peopleSection(ctx, members) {
         h(
           'li',
           { class: 'row' },
-          h('span', {}, h('strong', {}, m.name), ` · ${ROLE[m.role]}`, m.status === 'invited' ? ' · invite not used yet' : '', m.id === ctx.me.id ? ' (you)' : ''),
-          isElder && m.role !== 'elder' &&
-            h('button', {
-              type: 'button',
-              class: 'button ghost danger-text',
-              onclick: async () => {
-                if (!(await confirm(`Remove ${m.name}?`, 'They will lose access straight away.', { confirmLabel: 'Remove', danger: true }))) return;
-                try {
-                  await api(`/api/members/${m.id}`, { method: 'DELETE' });
-                  announce(`${m.name} removed.`);
-                  ctx.refresh();
-                } catch (err) {
-                  announce(err.message, { kind: 'error' });
-                }
+          h(
+            'span',
+            {},
+            h('strong', {}, m.name),
+            ` · ${ROLE[m.role]}`,
+            m.status === 'invited' ? ' · invite not used yet' : '',
+            m.id === ctx.me.id ? ' (you)' : '',
+          ),
+          isElder &&
+            m.role !== 'elder' &&
+            h(
+              'button',
+              {
+                type: 'button',
+                class: 'button ghost danger-text',
+                onclick: async () => {
+                  if (
+                    !(await confirm(`Remove ${m.name}?`, 'They will lose access straight away.', {
+                      confirmLabel: 'Remove',
+                      danger: true,
+                    }))
+                  )
+                    return;
+                  try {
+                    await api(`/api/members/${m.id}`, { method: 'DELETE' });
+                    announce(`${m.name} removed.`);
+                    ctx.refresh();
+                  } catch (err) {
+                    announce(err.message, { kind: 'error' });
+                  }
+                },
               },
-            }, 'Remove'),
+              'Remove',
+            ),
         ),
       ),
     ),
@@ -127,11 +208,34 @@ function settingsSection(ctx) {
   const f = h(
     'form',
     { class: 'stack' },
-    field({ label: 'Email', name: 'email', type: 'email', value: me.email, required: true, autocomplete: 'email' }),
-    field({ label: 'Phone', name: 'phone', type: 'tel', value: me.phone ?? '', autocomplete: 'tel' }),
+    field({
+      label: 'Email',
+      name: 'email',
+      type: 'email',
+      value: me.email,
+      required: true,
+      autocomplete: 'email',
+    }),
+    field({
+      label: 'Phone',
+      name: 'phone',
+      type: 'tel',
+      value: me.phone ?? '',
+      autocomplete: 'tel',
+    }),
     field({ label: 'Time zone', name: 'timezone', value: me.timezone, options: timezoneOptions() }),
-    field({ label: 'Language for reminders', name: 'language', value: me.language, options: LANGUAGES }),
-    field({ label: 'Send me email reminders', name: 'notifyEmail', type: 'checkbox', value: me.notify?.email }),
+    field({
+      label: 'Language for reminders',
+      name: 'language',
+      value: me.language,
+      options: LANGUAGES,
+    }),
+    field({
+      label: 'Send me email reminders',
+      name: 'notifyEmail',
+      type: 'checkbox',
+      value: me.notify?.email,
+    }),
     h('button', { type: 'submit', class: 'button primary' }, 'Save my details'),
   );
   f.addEventListener('submit', async (e) => {
@@ -141,7 +245,13 @@ function settingsSection(ctx) {
       try {
         const { me: updated } = await api('/api/me', {
           method: 'PATCH',
-          body: { email: v.email, phone: v.phone || undefined, timezone: v.timezone, language: v.language, notify: { email: v.notifyEmail === 'on' } },
+          body: {
+            email: v.email,
+            phone: v.phone || undefined,
+            timezone: v.timezone,
+            language: v.language,
+            notify: { email: v.notifyEmail === 'on' },
+          },
         });
         session.update({ me: updated });
         announce('Saved.');
@@ -155,8 +265,21 @@ function settingsSection(ctx) {
   const pass = h(
     'form',
     { class: 'stack' },
-    field({ label: 'Current passcode', name: 'currentPasscode', type: 'password', required: true, autocomplete: 'current-password' }),
-    field({ label: 'New passcode', name: 'newPasscode', type: 'password', required: true, minlength: 6, autocomplete: 'new-password' }),
+    field({
+      label: 'Current passcode',
+      name: 'currentPasscode',
+      type: 'password',
+      required: true,
+      autocomplete: 'current-password',
+    }),
+    field({
+      label: 'New passcode',
+      name: 'newPasscode',
+      type: 'password',
+      required: true,
+      minlength: 6,
+      autocomplete: 'new-password',
+    }),
     h('button', { type: 'submit', class: 'button secondary' }, 'Change passcode'),
   );
   pass.addEventListener('submit', async (e) => {
@@ -177,19 +300,23 @@ function settingsSection(ctx) {
   return section(
     'My details',
     f,
-    h('button', {
-      type: 'button',
-      class: 'button ghost',
-      onclick: (e) =>
-        busy(e.currentTarget, async () => {
-          try {
-            await api('/api/notifications/test', { method: 'POST' });
-            announce('Test email sent. Check your inbox.');
-          } catch (err) {
-            announce(err.message, { kind: 'error' });
-          }
-        }),
-    }, 'Send me a test email'),
+    h(
+      'button',
+      {
+        type: 'button',
+        class: 'button ghost',
+        onclick: (e) =>
+          busy(e.currentTarget, async () => {
+            try {
+              await api('/api/notifications/test', { method: 'POST' });
+              announce('Test email sent. Check your inbox.');
+            } catch (err) {
+              announce(err.message, { kind: 'error' });
+            }
+          }),
+      },
+      'Send me a test email',
+    ),
     h('details', {}, h('summary', {}, 'Change my passcode'), pass),
   );
 }
@@ -204,7 +331,10 @@ function elderSettings(ctx) {
   });
   toggle.control.addEventListener('change', async () => {
     try {
-      const { profile } = await api('/api/profile', { method: 'PATCH', body: { requireApproval: toggle.control.checked } });
+      const { profile } = await api('/api/profile', {
+        method: 'PATCH',
+        body: { requireApproval: toggle.control.checked },
+      });
       session.update({ profile });
       announce(toggle.control.checked ? 'Approval turned on.' : 'Approval turned off.');
     } catch (err) {
@@ -219,7 +349,23 @@ function activitySection(items) {
   return section(
     'Recent activity',
     items.length
-      ? h('ol', { class: 'activity' }, items.map((a) => h('li', {}, h('span', { class: 'muted' }, dateLabel(a.at, { hour: 'numeric', minute: '2-digit' }), ' — '), a.summary)))
+      ? h(
+          'ol',
+          { class: 'activity' },
+          items.map((a) =>
+            h(
+              'li',
+              {},
+              h(
+                'span',
+                { class: 'muted' },
+                dateLabel(a.at, { hour: 'numeric', minute: '2-digit' }),
+                ' — ',
+              ),
+              a.summary,
+            ),
+          ),
+        )
       : h('p', { class: 'muted' }, 'Nothing yet.'),
   );
 }
@@ -228,7 +374,28 @@ function notificationsSection(items) {
   return section(
     'Reminders sent',
     items.length
-      ? h('ul', { class: 'activity' }, items.slice(0, 20).map((n) => h('li', {}, h('span', { class: 'muted' }, dateLabel(n.createdAt, { hour: 'numeric', minute: '2-digit' }), ' — '), n.subject ?? n.kind, ' → ', (n.deliveries ?? []).filter((d) => d.status === 'sent').map((d) => d.name).join(', '))))
+      ? h(
+          'ul',
+          { class: 'activity' },
+          items.slice(0, 20).map((n) =>
+            h(
+              'li',
+              {},
+              h(
+                'span',
+                { class: 'muted' },
+                dateLabel(n.createdAt, { hour: 'numeric', minute: '2-digit' }),
+                ' — ',
+              ),
+              n.subject ?? n.kind,
+              ' → ',
+              (n.deliveries ?? [])
+                .filter((d) => d.status === 'sent')
+                .map((d) => d.name)
+                .join(', '),
+            ),
+          ),
+        )
       : h('p', { class: 'muted' }, 'No reminders sent yet.'),
   );
 }
@@ -240,15 +407,25 @@ export async function renderCircle(main, ctx) {
     api('/api/activity?limit=30'),
     api('/api/notifications'),
   ]);
-  add(main, 
+  add(
+    main,
     h('h1', { tabindex: '-1' }, 'Family & settings'),
-    h('p', { class: 'lead' }, 'CareCircle code: ', h('strong', { class: 'code' }, ctx.profile.code)),
+    h(
+      'p',
+      { class: 'lead' },
+      'CareCircle code: ',
+      h('strong', { class: 'code' }, ctx.profile.code),
+    ),
     pendingSection(ctx, changes),
     peopleSection(ctx, members),
     ctx.me.role === 'elder' ? elderSettings(ctx) : null,
     settingsSection(ctx),
     activitySection(activity),
     notificationsSection(notifications),
-    h('button', { type: 'button', class: 'button secondary', onclick: () => ctx.signOut() }, 'Sign out'),
+    h(
+      'button',
+      { type: 'button', class: 'button secondary', onclick: () => ctx.signOut() },
+      'Sign out',
+    ),
   );
 }

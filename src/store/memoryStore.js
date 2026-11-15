@@ -14,7 +14,8 @@ const OPS = {
   'array-contains': (a, b) => Array.isArray(a) && a.includes(b),
 };
 
-const getField = (doc, field) => field.split('.').reduce((v, k) => (v === null || v === undefined ? undefined : v[k]), doc);
+const getField = (doc, field) =>
+  field.split('.').reduce((v, k) => (v === null || v === undefined ? undefined : v[k]), doc);
 
 export function createMemoryStore() {
   /** @type {Map<string, Map<string, object>>} */

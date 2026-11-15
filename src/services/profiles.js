@@ -1,7 +1,12 @@
 import { paths } from '../store/index.js';
 import { HttpError } from '../lib/httpError.js';
 import { newId, newProfileCode, normalizeProfileCode, randomCode, sha256 } from '../lib/ids.js';
-import { hashPasscode, verifyPasscode, passcodeWeakness, burnPasscodeCheck } from '../lib/passcode.js';
+import {
+  hashPasscode,
+  verifyPasscode,
+  passcodeWeakness,
+  burnPasscodeCheck,
+} from '../lib/passcode.js';
 import { INVITABLE_ROLES } from '../lib/permissions.js';
 
 export const MAX_FAILED_ATTEMPTS = 5;
@@ -25,7 +30,7 @@ export function publicMember(m) {
     notify: m.notify,
     createdAt: m.createdAt,
     joinedAt: m.joinedAt ?? null,
-    inviteExpiresAt: m.status === 'invited' ? m.invite?.expiresAt ?? null : null,
+    inviteExpiresAt: m.status === 'invited' ? (m.invite?.expiresAt ?? null) : null,
   };
 }
 
@@ -67,7 +72,11 @@ export function createProfileService({ store, activity, now }) {
 
   const assertNotLocked = (profile) => {
     if (profile.security?.lockedUntil && Date.parse(profile.security.lockedUntil) > now()) {
-      throw new HttpError(429, `Too many wrong attempts. Please try again in ${LOCKOUT_MINUTES} minutes.`, 'LOCKED');
+      throw new HttpError(
+        429,
+        `Too many wrong attempts. Please try again in ${LOCKOUT_MINUTES} minutes.`,
+        'LOCKED',
+      );
     }
   };
 
@@ -89,7 +98,10 @@ export function createProfileService({ store, activity, now }) {
 
   const resetFailures = (profile) =>
     profile.security?.failedAttempts
-      ? profiles().update(profile.id, { 'security.failedAttempts': 0, 'security.lockedUntil': null })
+      ? profiles().update(profile.id, {
+          'security.failedAttempts': 0,
+          'security.lockedUntil': null,
+        })
       : null;
 
   async function generateUniqueCode() {
@@ -97,7 +109,11 @@ export function createProfileService({ store, activity, now }) {
       const code = newProfileCode();
       if (!(await profiles().get(code))) return code;
     }
-    throw new HttpError(503, 'Could not create a profile right now. Please try again.', 'CODE_EXHAUSTED');
+    throw new HttpError(
+      503,
+      'Could not create a profile right now. Please try again.',
+      'CODE_EXHAUSTED',
+    );
   }
 
   const api = {
@@ -130,7 +146,10 @@ export function createProfileService({ store, activity, now }) {
         createdAt,
         joinedAt: createdAt,
       });
-      await activity.record(code, elder, { action: 'profile.created', summary: `${elderName} created their CareCircle.` });
+      await activity.record(code, elder, {
+        action: 'profile.created',
+        summary: `${elderName} created their CareCircle.`,
+      });
       return { profile, member: elder };
     },
 
@@ -159,7 +178,9 @@ export function createProfileService({ store, activity, now }) {
       }
       assertNotLocked(profile);
       const active = await members(pid).list({ where: [['status', '==', 'active']] });
-      const results = await Promise.all(active.map((m) => verifyPasscode(passcode, m.passcodeHash)));
+      const results = await Promise.all(
+        active.map((m) => verifyPasscode(passcode, m.passcodeHash)),
+      );
       const member = active[results.indexOf(true)];
       if (!member) {
         await recordFailure(profile);
@@ -174,7 +195,8 @@ export function createProfileService({ store, activity, now }) {
       if (patch.elderName !== undefined) updates.elderName = patch.elderName;
       if (patch.timezone !== undefined) updates.timezone = patch.timezone;
       if (patch.language !== undefined) updates.language = patch.language;
-      if (patch.requireApproval !== undefined) updates['settings.requireApproval'] = patch.requireApproval;
+      if (patch.requireApproval !== undefined)
+        updates['settings.requireApproval'] = patch.requireApproval;
       if (!Object.keys(updates).length) return api.getProfile(pid);
       const profile = await profiles().update(pid, updates);
       const summary =
@@ -189,7 +211,8 @@ export function createProfileService({ store, activity, now }) {
 
     /** Elder invites a family member or caretaker. Returns the one-time invite code. */
     async invite(pid, actor, { name, role, email }) {
-      if (!INVITABLE_ROLES.includes(role)) throw new HttpError(400, 'Role must be family or caretaker', 'VALIDATION');
+      if (!INVITABLE_ROLES.includes(role))
+        throw new HttpError(400, 'Role must be family or caretaker', 'VALIDATION');
       const current = await api.listMembers(pid);
       if (current.length >= MAX_MEMBERS) {
         throw new HttpError(409, `A CareCircle can have at most ${MAX_MEMBERS} people.`, 'LIMIT');
@@ -259,8 +282,10 @@ export function createProfileService({ store, activity, now }) {
     /** Elder removes someone. Their sessions stop working immediately. */
     async removeMember(pid, actor, memberId) {
       const member = await members(pid).get(memberId);
-      if (!member || member.status === 'removed') throw new HttpError(404, 'Person not found', 'NOT_FOUND');
-      if (member.role === 'elder') throw new HttpError(400, 'The elder cannot be removed.', 'FORBIDDEN_ACTION');
+      if (!member || member.status === 'removed')
+        throw new HttpError(404, 'Person not found', 'NOT_FOUND');
+      if (member.role === 'elder')
+        throw new HttpError(400, 'The elder cannot be removed.', 'FORBIDDEN_ACTION');
       await members(pid).update(memberId, {
         status: 'removed',
         passcodeHash: null,
@@ -308,7 +333,10 @@ export function createProfileService({ store, activity, now }) {
         passcodeHash: await hashPasscode(newPasscode),
         tokenVersion: (fresh.tokenVersion ?? 1) + 1,
       });
-      await activity.record(pid, member, { action: 'member.passcode', summary: `${member.name} changed their passcode.` });
+      await activity.record(pid, member, {
+        action: 'member.passcode',
+        summary: `${member.name} changed their passcode.`,
+      });
       return updated;
     },
   };

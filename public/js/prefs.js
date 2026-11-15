@@ -19,7 +19,8 @@ export function loadPrefs() {
 
 export function applyPrefs(p) {
   const root = document.documentElement;
-  for (const s of TEXT_SIZES) if (s.className) root.classList.toggle(s.className, p.size === s.value);
+  for (const s of TEXT_SIZES)
+    if (s.className) root.classList.toggle(s.className, p.size === s.value);
   root.classList.toggle('contrast-high', Boolean(p.contrast));
 }
 
