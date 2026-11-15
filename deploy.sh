@@ -57,14 +57,32 @@ put_secret cron-secret "$CRON_SECRET"
 step "Giving the Cloud Run service account only the access it needs"
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
 RUN_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-for role in roles/datastore.user roles/secretmanager.secretAccessor roles/cloudtranslate.user roles/logging.logWriter; do
+# cloudbuild.builds.builder: new projects build "--source" deploys with this account,
+# which otherwise cannot read the uploaded sources or push the image.
+for role in roles/datastore.user roles/secretmanager.secretAccessor roles/cloudtranslate.user roles/logging.logWriter roles/cloudbuild.builds.builder; do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$RUN_SA" --role="$role" --condition=None >/dev/null
 done
 
 step "Building and deploying to Cloud Run (takes a few minutes)"
+# Settings go in a YAML file: values such as "CareCircle <me@gmail.com>" contain
+# characters (@, <, spaces) that break the comma-separated --set-env-vars form.
+ENV_FILE="$(mktemp)"
+trap 'rm -f "$ENV_FILE"' EXIT
+yaml_quote() { printf '"%s"' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
+{
+  echo "NODE_ENV: \"production\""
+  echo "STORE: \"firestore\""
+  echo "MAIL_TRANSPORT: \"smtp\""
+  echo "SMTP_HOST: \"smtp.gmail.com\""
+  echo "SMTP_PORT: \"465\""
+  echo "SMTP_USER: $(yaml_quote "$SMTP_USER")"
+  echo "MAIL_FROM: $(yaml_quote "$MAIL_FROM")"
+  echo "GEMINI_MODEL: \"gemini-flash-latest\""
+  echo "GOOGLE_CLOUD_PROJECT: $(yaml_quote "$PROJECT_ID")"
+} > "$ENV_FILE"
 gcloud run deploy "$SERVICE" --source . --region "$REGION" --allow-unauthenticated \
   --service-account "$RUN_SA" --memory 512Mi --cpu 1 --min-instances 0 --max-instances 3 --timeout 120 \
-  --set-env-vars "^@^NODE_ENV=production@STORE=firestore@MAIL_TRANSPORT=smtp@SMTP_HOST=smtp.gmail.com@SMTP_PORT=465@SMTP_USER=${SMTP_USER}@MAIL_FROM=${MAIL_FROM}@GEMINI_MODEL=gemini-flash-latest@GOOGLE_CLOUD_PROJECT=${PROJECT_ID}" \
+  --env-vars-file "$ENV_FILE" \
   --set-secrets "GEMINI_API_KEY=gemini-api-key:latest,SMTP_PASS=smtp-pass:latest,SESSION_SECRET=session-secret:latest,CRON_SECRET=cron-secret:latest"
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"
