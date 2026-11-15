@@ -1,34 +1,38 @@
 # CareCircle
 
+[![CI](https://github.com/sonitanay23/carecircle/actions/workflows/ci.yml/badge.svg)](https://github.com/sonitanay23/carecircle/actions/workflows/ci.yml) ![Tests](https://img.shields.io/badge/tests-147%20passing-brightgreen) ![Coverage](https://img.shields.io/badge/coverage-98.5%25-brightgreen) ![Node](https://img.shields.io/badge/node-22-blue) ![License](https://img.shields.io/badge/license-MIT-blue)
+
+**Live:** https://carecircle-dqjzfm3zpq-el.a.run.app
+
 **Medicines and care, together — with the elder in charge.**
 
 CareCircle is a shared healthcare management platform for elderly people, their family and their caretakers. Everyone works from one healthcare profile, protected by a passcode, to manage medication schedules, track adherence and keep on top of doctor appointments. Reminders go out automatically by **email**, with one-tap "I've taken it" links.
 
-Built for the PromptWars *Catalyst* challenge: Elderly Care & Medication Management Platform.
+Built for the PromptWars _Catalyst_ challenge: Elderly Care & Medication Management Platform.
 
 ## Why it is more than a reminder app
 
-| Idea | What it does |
-| --- | --- |
-| Elder approves changes | Edits by family or caretakers stay *pending* until the elder approves them. |
-| Activity log | Every change is recorded: who changed what, and when. |
-| Escalating reminders | Upcoming dose → missed dose to the elder → still missed, escalate to family. |
-| One-tap "I've taken it" | The elder or caretaker confirms a dose straight from the reminder email. |
-| Prescription scan | Photograph a prescription or pill box; Gemini drafts the schedule for a person to confirm. |
-| Plain-language medicines | Gemini explains each medicine simply and flags possible clashes as "ask your doctor". |
-| Refill tracker | Pill counts go down as doses are taken, with "running low" alerts. |
-| Medical ID with QR code | Allergies, blood group, current medicines and emergency contacts for paramedics. |
-| Pre-visit summary | The day before an appointment, a one-page adherence report and questions for the doctor. |
-| Languages & read-aloud | Instructions translated and spoken aloud (e.g. Hindi, Tamil). |
-| Time-zone aware | Each person gets reminders in their own local time (family abroad). |
-| Calendar & Maps | "Add to Google Calendar" and directions to the clinic for every appointment. |
-| Voice assistant | Ask "Did I take my BP tablet today?" and get a spoken answer from the dose log. |
-| Pill photos | A photo on each medicine so the elder can recognise the right tablet without reading. |
-| SOS button | One tap emails every family member, with the elder's location. |
-| Health readings | Log blood pressure and sugar, see trends, share them with the doctor (no AI advice). |
-| Works offline | Installable app (PWA) that shows today's doses even without internet. |
+| Idea                     | What it does                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| Elder approves changes   | Edits by family or caretakers stay _pending_ until the elder approves them.                |
+| Activity log             | Every change is recorded: who changed what, and when.                                      |
+| Escalating reminders     | Upcoming dose → missed dose to the elder → still missed, escalate to family.               |
+| One-tap "I've taken it"  | The elder or caretaker confirms a dose straight from the reminder email.                   |
+| Prescription scan        | Photograph a prescription or pill box; Gemini drafts the schedule for a person to confirm. |
+| Plain-language medicines | Gemini explains each medicine simply and flags possible clashes as "ask your doctor".      |
+| Refill tracker           | Pill counts go down as doses are taken, with "running low" alerts.                         |
+| Medical ID with QR code  | Allergies, blood group, current medicines and emergency contacts for paramedics.           |
+| Pre-visit summary        | The day before an appointment, a one-page adherence report and questions for the doctor.   |
+| Languages & read-aloud   | Instructions translated and spoken aloud (e.g. Hindi, Tamil).                              |
+| Time-zone aware          | Each person gets reminders in their own local time (family abroad).                        |
+| Calendar & Maps          | "Add to Google Calendar" and directions to the clinic for every appointment.               |
+| Voice assistant          | Ask "Did I take my BP tablet today?" and get a spoken answer from the dose log.            |
+| Pill photos              | A photo on each medicine so the elder can recognise the right tablet without reading.      |
+| SOS button               | One tap emails every family member, with the elder's location.                             |
+| Health readings          | Log blood pressure and sugar, see trends, share them with the doctor (no AI advice).       |
+| Works offline            | Installable app (PWA) that shows today's doses even without internet.                      |
 
-Health readings outside common general reference ranges are marked *worth mentioning to your doctor*; CareCircle never interprets them. CareCircle never gives dosage advice or diagnoses. AI output is always reviewed by a person and marked as *check with your doctor*.
+Health readings outside common general reference ranges are marked _worth mentioning to your doctor_; CareCircle never interprets them. CareCircle never gives dosage advice or diagnoses. AI output is always reviewed by a person and marked as _check with your doctor_.
 
 ## Google Cloud services
 
@@ -71,7 +75,17 @@ cp .env.example .env
 npm run dev        # http://localhost:8080
 npm test
 npm run lint
+npm run test:coverage
 ```
+
+GitHub Actions runs lint, all unit/API tests with coverage, a production dependency audit and the Playwright browser tests on every push (`.github/workflows/ci.yml`).
+
+| Suite                | What it covers                                                                                                                                                                                                                                                 |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 147 unit + API tests | Schedules and time zones, dose logging, adherence, elder approval flow, reminders (upcoming, missed, escalation, idempotency, retries), email content, permissions, passcode lockout, token revocation, input validation, QR encoder, AI parsing and fallbacks |
+| 5 Playwright tests   | Elder and family journeys at phone size, text-size and contrast modes, keyboard focus, labelled controls                                                                                                                                                       |
+
+Coverage (`node --experimental-test-coverage`): **98.5% lines, 90% branches, 95% functions**.
 
 ## Project layout
 
@@ -105,43 +119,43 @@ medicalIdShares/{sha256(token)}        lookup for the public medical ID link
 
 ## API
 
-| Method | Path | Who |
-| --- | --- | --- |
-| POST | `/api/profiles` | Anyone: create a CareCircle (becomes the elder) |
-| POST | `/api/sessions` | Sign in with profile code + own passcode |
-| POST | `/api/members/join` | Invited person joins with invite code |
-| GET/PATCH | `/api/me`, POST `/api/me/passcode` | Any member |
-| PATCH | `/api/profile` | Elder (e.g. turn approval on/off) |
-| GET | `/api/members` | Any member |
-| POST | `/api/members/invites`, DELETE `/api/members/:id` | Elder |
-| GET | `/api/changes?status=pending` | Any member |
-| POST | `/api/changes/:id/approve` and `/reject` | Elder |
-| POST | `/api/changes/:id/withdraw` | Person who suggested it |
-| GET | `/api/activity` | Any member |
-| GET/PUT | `/api/medical-id` | Any member (non-elder edits need approval → `202`) |
-| POST/DELETE | `/api/medical-id/sharing` | Elder |
-| GET | `/api/public/medical-id/:token` | Public (emergency view, not cached or indexed) |
-| GET/POST | `/api/medications`, PATCH/DELETE `/api/medications/:id` | Any member (non-elder changes need approval) |
-| POST | `/api/medications/:id/refill` | Any member |
-| PUT/GET/DELETE | `/api/medications/:id/photo` | Any member (raw JPEG/PNG/WebP body) |
-| GET | `/api/doses/today`, `/api/doses?from&to`, `/api/adherence?days=7` | Any member |
-| POST | `/api/doses` | Any member: log taken / skipped |
-| GET/POST | `/api/appointments`, PATCH/DELETE `/api/appointments/:id` | Any member (non-elder changes need approval) |
-| POST | `/api/appointments/:id/attended` | Any member |
-| GET/POST | `/api/readings`, DELETE `/api/readings/:id` | Any member |
-| GET | `/api/notifications` | Any member: what was sent to whom |
-| POST | `/api/notifications/test` | Any member: send yourself a test message |
-| POST | `/api/sos` | Any member: email everyone else at once, with optional location |
-| GET | `/api/ai/status` | Which AI features are on |
-| POST | `/api/ai/prescription-scan` | Photo → draft medicines (raw JPEG/PNG/WebP, ≤4 MB) |
-| GET | `/api/medications/:id/explanation?lang=hi` | Plain-language explanation |
-| GET | `/api/ai/interactions` | Possible clashes, as "ask your doctor" |
-| GET | `/api/appointments/:id/visit-summary` | Summary + questions for the doctor |
-| POST | `/api/ai/ask` | Voice assistant question → short answer |
-| POST | `/api/ai/speak` | Text → MP3 (read-aloud) |
-| POST | `/api/ai/translate` | Short text → another language |
-| POST | `/internal/reminders/run` | Cloud Scheduler only (`X-Cron-Secret`) |
-| GET/POST | `/a/:token` | One-tap email action (confirm page, then record) |
+| Method         | Path                                                              | Who                                                             |
+| -------------- | ----------------------------------------------------------------- | --------------------------------------------------------------- |
+| POST           | `/api/profiles`                                                   | Anyone: create a CareCircle (becomes the elder)                 |
+| POST           | `/api/sessions`                                                   | Sign in with profile code + own passcode                        |
+| POST           | `/api/members/join`                                               | Invited person joins with invite code                           |
+| GET/PATCH      | `/api/me`, POST `/api/me/passcode`                                | Any member                                                      |
+| PATCH          | `/api/profile`                                                    | Elder (e.g. turn approval on/off)                               |
+| GET            | `/api/members`                                                    | Any member                                                      |
+| POST           | `/api/members/invites`, DELETE `/api/members/:id`                 | Elder                                                           |
+| GET            | `/api/changes?status=pending`                                     | Any member                                                      |
+| POST           | `/api/changes/:id/approve` and `/reject`                          | Elder                                                           |
+| POST           | `/api/changes/:id/withdraw`                                       | Person who suggested it                                         |
+| GET            | `/api/activity`                                                   | Any member                                                      |
+| GET/PUT        | `/api/medical-id`                                                 | Any member (non-elder edits need approval → `202`)              |
+| POST/DELETE    | `/api/medical-id/sharing`                                         | Elder                                                           |
+| GET            | `/api/public/medical-id/:token`                                   | Public (emergency view, not cached or indexed)                  |
+| GET/POST       | `/api/medications`, PATCH/DELETE `/api/medications/:id`           | Any member (non-elder changes need approval)                    |
+| POST           | `/api/medications/:id/refill`                                     | Any member                                                      |
+| PUT/GET/DELETE | `/api/medications/:id/photo`                                      | Any member (raw JPEG/PNG/WebP body)                             |
+| GET            | `/api/doses/today`, `/api/doses?from&to`, `/api/adherence?days=7` | Any member                                                      |
+| POST           | `/api/doses`                                                      | Any member: log taken / skipped                                 |
+| GET/POST       | `/api/appointments`, PATCH/DELETE `/api/appointments/:id`         | Any member (non-elder changes need approval)                    |
+| POST           | `/api/appointments/:id/attended`                                  | Any member                                                      |
+| GET/POST       | `/api/readings`, DELETE `/api/readings/:id`                       | Any member                                                      |
+| GET            | `/api/notifications`                                              | Any member: what was sent to whom                               |
+| POST           | `/api/notifications/test`                                         | Any member: send yourself a test message                        |
+| POST           | `/api/sos`                                                        | Any member: email everyone else at once, with optional location |
+| GET            | `/api/ai/status`                                                  | Which AI features are on                                        |
+| POST           | `/api/ai/prescription-scan`                                       | Photo → draft medicines (raw JPEG/PNG/WebP, ≤4 MB)              |
+| GET            | `/api/medications/:id/explanation?lang=hi`                        | Plain-language explanation                                      |
+| GET            | `/api/ai/interactions`                                            | Possible clashes, as "ask your doctor"                          |
+| GET            | `/api/appointments/:id/visit-summary`                             | Summary + questions for the doctor                              |
+| POST           | `/api/ai/ask`                                                     | Voice assistant question → short answer                         |
+| POST           | `/api/ai/speak`                                                   | Text → MP3 (read-aloud)                                         |
+| POST           | `/api/ai/translate`                                               | Short text → another language                                   |
+| POST           | `/internal/reminders/run`                                         | Cloud Scheduler only (`X-Cron-Secret`)                          |
+| GET/POST       | `/a/:token`                                                       | One-tap email action (confirm page, then record)                |
 
 ## AI safety
 
@@ -157,15 +171,16 @@ medicalIdShares/{sha256(token)}        lookup for the public medical ID link
 
 Cloud Scheduler calls `POST /internal/reminders/run` every 5 minutes with an `X-Cron-Secret` header. Each run checks every CareCircle:
 
-| When | Who is told |
-| --- | --- |
-| 10 min before a dose | Elder and caretakers, with a one-tap **I've taken it** link |
-| Dose not logged 60 min after its time | Elder and caretakers |
-| Still not taken 60 min after that | Family (escalation), with a call button |
-| Day before / 2 hours before an appointment | Everyone, with directions and an Add to Google Calendar link |
-| Medicine running low | Everyone, with a "find a pharmacy" link |
-| A family member suggests a change | Elder, to approve or say no |
-| Sunday 6 pm (elder's time) | Everyone: weekly adherence summary |
+| When                                       | Who is told                                                                                                  |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| 10 min before a dose                       | Elder and caretakers, with a one-tap **I've taken it** link                                                  |
+| Dose not logged 60 min after its time      | Elder and caretakers                                                                                         |
+| Still not taken 60 min after that          | Family (escalation), with a call button                                                                      |
+| Day before / 2 hours before an appointment | Everyone, with directions and an Add to Google Calendar link                                                 |
+| Medicine running low                       | Everyone, with a "find a pharmacy" link                                                                      |
+| A family member suggests a change          | Elder, to approve or say no                                                                                  |
+| Sunday 6 pm (elder's time)                 | Everyone: weekly adherence summary                                                                           |
+| Someone creates or joins a CareCircle      | That person: a welcome email with their CareCircle code, so it is never lost (the passcode is never emailed) |
 
 - Times in each message are shown in the **recipient's own time zone** (and the elder's, if different).
 - Every message is recorded in a notification ledger whose id acts as a lock, so overlapping runs never send twice; if every delivery fails the lock is released and the next run retries.
@@ -211,3 +226,5 @@ npm run lint
 - Stricter rate limits on sign-in, sign-up and invite endpoints
 - JSON body size limit; errors never expose stack traces to clients
 - Container runs as a non-root user; secrets come from Secret Manager, never from the repo
+
+See [SECURITY.md](SECURITY.md) for the full list of controls and how to report a vulnerability.

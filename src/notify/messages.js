@@ -174,6 +174,23 @@ export const messages = {
     });
   },
 
+  /** Sent once when someone creates a profile or joins one, so the CareCircle code is never lost. */
+  welcome({ recipient, elderName, code, appUrl }) {
+    const isElder = recipient.role === 'elder';
+    return build({
+      subject: 'Welcome to CareCircle: your CareCircle code',
+      heading: `Welcome, ${firstName(recipient.name)}`,
+      paragraphs: [
+        isElder
+          ? 'Your CareCircle is ready. You stay in charge of your medicines, visits and who can see them.'
+          : `You have joined ${firstName(elderName)}'s CareCircle.`,
+        `Your CareCircle code is ${code}. Keep this email: you need the code and your own passcode to sign in on a new phone or computer.`,
+        'We will never ask for your passcode by email.',
+      ],
+      actions: [{ label: 'Open CareCircle', url: appUrl }],
+    });
+  },
+
   test({ recipient }) {
     return build({
       subject: 'CareCircle test message',

@@ -99,6 +99,23 @@ export function apiRouter({ services, config }) {
   const { profiles, changes, activity, medicalId } = services;
   const router = Router();
 
+  /**
+   * Emails the new member their CareCircle code. Runs in the background so a
+   * slow mail server never delays sign-up; the ledger id stops duplicates.
+   */
+  const sendWelcome = (profile, member) => {
+    if (!services.notifier) return;
+    const code = formatProfileCode(profile.id);
+    services.notifier
+      .send(profile.id, {
+        id: `welcome-${member.id}`,
+        kind: 'welcome',
+        recipients: [member],
+        build: (recipient) => messages.welcome({ recipient, elderName: profile.elderName, code, appUrl: config.appBaseUrl }),
+      })
+      .catch(() => {});
+  };
+
   // Tighter limits on endpoints that check passcodes or invite codes.
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -114,6 +131,7 @@ export function apiRouter({ services, config }) {
     const input = parse(req.body, schemas.createProfile);
     const { profile, member } = await profiles.createProfile(input);
     res.status(201).json(session(services, profile, member));
+    sendWelcome(profile, member);
   });
 
   router.post('/sessions', authLimiter, async (req, res) => {
@@ -126,6 +144,7 @@ export function apiRouter({ services, config }) {
     const input = parse(req.body, schemas.join);
     const { profile, member } = await profiles.join(input);
     res.status(201).json(session(services, profile, member));
+    sendWelcome(profile, member);
   });
 
   router.get('/public/medical-id/:token', authLimiter, async (req, res) => {
